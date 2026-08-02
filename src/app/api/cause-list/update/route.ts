@@ -25,6 +25,20 @@ async function sendTwilioSms(to: string, body: string): Promise<boolean> {
   return false;
 }
 
+// Helper to execute Prisma queries with automatic cold-start retry
+async function withPrismaRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    if (retries > 0 && (err?.code === 'P1001' || err?.message?.includes('Can\'t reach database server'))) {
+      console.warn(`[Prisma DB Retry] Retrying connection... (${retries} attempts left)`);
+      await new Promise(r => setTimeout(r, 1000));
+      return withPrismaRetry(fn, retries - 1);
+    }
+    throw err;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -41,13 +55,15 @@ export async function POST(req: Request) {
     const hearingDateObj = new Date(nextHearing);
 
     // 1. Fetch case with client details
-    const existingCase = await prisma.case.findUnique({
-      where: { id: caseId },
-      include: {
-        client: { select: { id: true, name: true, phone: true } },
-        junior: { select: { id: true, name: true, phone: true } },
-      },
-    });
+    const existingCase = await withPrismaRetry(() =>
+      prisma.case.findUnique({
+        where: { id: caseId },
+        include: {
+          client: { select: { id: true, name: true, phone: true } },
+          junior: { select: { id: true, name: true, phone: true } },
+        },
+      })
+    );
 
     if (!existingCase) {
       return NextResponse.json({ error: 'Case folder not found.' }, { status: 404 });
@@ -56,24 +72,28 @@ export async function POST(req: Request) {
     const updatedCourt = court || existingCase.court || 'High Court Bench';
 
     // 2. Update Case record in DB
-    const updatedCase = await prisma.case.update({
-      where: { id: caseId },
-      data: {
-        nextHearing: hearingDateObj,
-        court: updatedCourt,
-      },
-    });
+    const updatedCase = await withPrismaRetry(() =>
+      prisma.case.update({
+        where: { id: caseId },
+        data: {
+          nextHearing: hearingDateObj,
+          court: updatedCourt,
+        },
+      })
+    );
 
     // 3. Create CaseEvent timeline entry
     const eventTitle = notes ? `Hearing Scheduled: ${notes}` : `Hearing Scheduled at ${updatedCourt}`;
-    const caseEvent = await prisma.caseEvent.create({
-      data: {
-        caseId,
-        eventDate: hearingDateObj,
-        title: eventTitle,
-        notes: notes || `Hearing listed for ${hearingDateObj.toLocaleDateString('en-IN')}`,
-      },
-    });
+    const caseEvent = await withPrismaRetry(() =>
+      prisma.caseEvent.create({
+        data: {
+          caseId,
+          eventDate: hearingDateObj,
+          title: eventTitle,
+          notes: notes || `Hearing listed for ${hearingDateObj.toLocaleDateString('en-IN')}`,
+        },
+      })
+    );
 
     // 4. Create & Trigger Twilio SMS Reminder
     const dateFormatted = hearingDateObj.toLocaleDateString('en-IN', {
@@ -92,18 +112,20 @@ export async function POST(req: Request) {
 
     // Schedule 24h prior reminder entry in DB
     const scheduledFor = new Date(hearingDateObj.getTime() - 24 * 60 * 60 * 1000);
-    await prisma.hearingReminder.create({
-      data: {
-        caseId,
-        recipientId: existingCase.client.id,
-        recipientType: 'CLIENT',
-        channel: 'SMS',
-        message: smsMessage,
-        status: smsSent ? ReminderStatus.SENT : ReminderStatus.PENDING,
-        sentAt: smsSent ? new Date() : null,
-        scheduledFor,
-      },
-    });
+    await withPrismaRetry(() =>
+      prisma.hearingReminder.create({
+        data: {
+          caseId,
+          recipientId: existingCase.client.id,
+          recipientType: 'CLIENT',
+          channel: 'SMS',
+          message: smsMessage,
+          status: smsSent ? ReminderStatus.SENT : ReminderStatus.PENDING,
+          sentAt: smsSent ? new Date() : null,
+          scheduledFor,
+        },
+      })
+    );
 
     return NextResponse.json({
       success: true,

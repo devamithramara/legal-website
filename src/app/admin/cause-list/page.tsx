@@ -5,7 +5,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/providers';
 import {
   Gavel,
@@ -159,7 +158,7 @@ export default function CauseListPage() {
     }
   };
 
-  const activeCases = cases.filter(c => c.status !== 'CLOSED');
+  const activeCases = cases.filter(c => String(c.status).toUpperCase() !== 'CLOSED');
   const filteredCases = activeCases.filter(c =>
     c.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -255,18 +254,29 @@ export default function CauseListPage() {
                   <Label htmlFor="caseSelect" className="font-bold text-[#0A1628]">
                     Select Active Case Folder *
                   </Label>
-                  <Select value={selectedCaseId} onValueChange={(val) => setSelectedCaseId(val || '')}>
-                    <SelectTrigger className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold shadow-sm h-10">
-                      <SelectValue placeholder="Choose case number..." className="text-slate-500 font-medium" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white text-xs text-[#0A1628] border-slate-300 shadow-xl">
-                      {activeCases.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="text-xs text-[#0A1628] font-semibold hover:bg-amber-50">
-                          {c.caseNumber} - {c.title} ({c.client?.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  
+                  <select
+                    id="caseSelect"
+                    value={selectedCaseId}
+                    onChange={(e) => setSelectedCaseId(e.target.value)}
+                    className="w-full h-10 px-3 py-2 rounded-lg border border-slate-300 bg-white text-[#0A1628] font-bold text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] cursor-pointer"
+                    required
+                  >
+                    <option value="" disabled className="text-slate-500 font-medium">
+                      Choose case number...
+                    </option>
+                    {activeCases.length === 0 ? (
+                      <option value="" disabled className="text-slate-400 font-medium">
+                        No active cases found
+                      </option>
+                    ) : (
+                      activeCases.map((c) => (
+                        <option key={c.id} value={c.id} className="text-[#0A1628] font-semibold py-1">
+                          {c.caseNumber} - {c.title} ({c.client?.name || 'Client'})
+                        </option>
+                      ))
+                    )}
+                  </select>
                 </div>
 
                 {/* 2. Next Hearing Date & Time */}
