@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Role, CaseStatus } from '@prisma/client';
 
-// Get Cases (role-filtered)
+// Get Cases (role-filtered with optimized query speed)
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -17,23 +17,39 @@ export async function GET() {
 
     if (role === Role.ADMIN) {
       cases = await prisma.case.findMany({
-        include: {
-          client: { select: { name: true, email: true, phone: true } },
+        select: {
+          id: true,
+          caseNumber: true,
+          title: true,
+          type: true,
+          status: true,
+          nextHearing: true,
+          court: true,
+          createdAt: true,
+          client: { select: { id: true, name: true, email: true, phone: true } },
           junior: { select: { id: true, name: true } },
-          events: true,
-          documents: true,
-          tasks: true,
+          events: { select: { id: true, eventDate: true, title: true, notes: true }, orderBy: { eventDate: 'desc' }, take: 5 },
+          documents: { select: { id: true, name: true, url: true, type: true } },
+          tasks: { select: { id: true, title: true, status: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
     } else if (role === Role.JUNIOR || role === Role.INTERN) {
       cases = await prisma.case.findMany({
         where: { assignedTo: id },
-        include: {
-          client: { select: { name: true, email: true, phone: true } },
-          events: true,
-          documents: true,
-          tasks: { where: { assignedTo: id } },
+        select: {
+          id: true,
+          caseNumber: true,
+          title: true,
+          type: true,
+          status: true,
+          nextHearing: true,
+          court: true,
+          createdAt: true,
+          client: { select: { id: true, name: true, email: true, phone: true } },
+          events: { select: { id: true, eventDate: true, title: true, notes: true }, orderBy: { eventDate: 'desc' }, take: 5 },
+          documents: { select: { id: true, name: true, url: true, type: true } },
+          tasks: { where: { assignedTo: id }, select: { id: true, title: true, status: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -41,17 +57,29 @@ export async function GET() {
       // Client role
       cases = await prisma.case.findMany({
         where: { clientId: id },
-        include: {
+        select: {
+          id: true,
+          caseNumber: true,
+          title: true,
+          type: true,
+          status: true,
+          nextHearing: true,
+          court: true,
+          createdAt: true,
           junior: { select: { name: true, email: true } },
-          events: true,
-          documents: true,
-          tasks: true,
+          events: { select: { id: true, eventDate: true, title: true, notes: true }, orderBy: { eventDate: 'desc' }, take: 5 },
+          documents: { select: { id: true, name: true, url: true, type: true } },
+          tasks: { select: { id: true, title: true, status: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
     }
 
-    return NextResponse.json(cases);
+    return NextResponse.json(cases, {
+      headers: {
+        'Cache-Control': 'private, max-age=2, stale-while-revalidate=5',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching cases:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

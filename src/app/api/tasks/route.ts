@@ -18,7 +18,12 @@ export async function GET() {
     if (role === Role.ADMIN) {
       // Admin sees all tasks
       tasks = await prisma.task.findMany({
-        include: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          deadline: true,
+          billableHours: true,
           case: { select: { caseNumber: true, title: true } },
           junior: { select: { name: true } },
         },
@@ -28,7 +33,12 @@ export async function GET() {
       // Junior sees assigned tasks
       tasks = await prisma.task.findMany({
         where: { assignedTo: id },
-        include: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          deadline: true,
+          billableHours: true,
           case: { select: { caseNumber: true, title: true } },
         },
         orderBy: { deadline: 'asc' },
@@ -37,7 +47,11 @@ export async function GET() {
       tasks = [];
     }
 
-    return NextResponse.json(tasks);
+    return NextResponse.json(tasks, {
+      headers: {
+        'Cache-Control': 'private, max-age=2, stale-while-revalidate=5',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

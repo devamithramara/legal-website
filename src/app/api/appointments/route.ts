@@ -18,7 +18,14 @@ export async function GET() {
     if (role === Role.ADMIN) {
       // Admin sees all appointments
       appointments = await prisma.appointment.findMany({
-        include: {
+        select: {
+          id: true,
+          date: true,
+          timeSlot: true,
+          caseType: true,
+          status: true,
+          feePaid: true,
+          notes: true,
           client: {
             select: { name: true, email: true, phone: true },
           },
@@ -36,7 +43,11 @@ export async function GET() {
       appointments = [];
     }
 
-    return NextResponse.json(appointments);
+    return NextResponse.json(appointments, {
+      headers: {
+        'Cache-Control': 'private, max-age=2, stale-while-revalidate=5',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching appointments:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
