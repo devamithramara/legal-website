@@ -12,9 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/components/providers';
-import { CheckCircle2, ArrowRight, Download, CalendarDays } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Download, CalendarDays, Sparkles, Clock, ShieldCheck } from 'lucide-react';
 
-/** Convert a local Date object to YYYY-MM-DD without timezone shift */
 function toLocalDateStr(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -27,9 +26,7 @@ export default function BookPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // 2-step: 1 = Schedule, 2 = Confirmed
   const [step, setStep] = useState(1);
-
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [slots, setSlots] = useState<{ slot: string; capacityLeft: number; isAvailable: boolean }[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string>('');
@@ -38,7 +35,6 @@ export default function BookPage() {
   const [submitting, setSubmitting] = useState(false);
   const [appointment, setAppointment] = useState<any>(null);
 
-  // Fetch available slots whenever date changes — uses local date string to avoid UTC shift
   useEffect(() => {
     if (!selectedDate) return;
     const fetchSlots = async () => {
@@ -76,7 +72,6 @@ export default function BookPage() {
 
     setSubmitting(true);
     try {
-      // Use local date string (YYYY-MM-DD) stored at midnight local to avoid UTC day-shift
       const localDateStr = toLocalDateStr(selectedDate);
 
       const res = await fetch('/api/appointments', {
@@ -145,19 +140,33 @@ export default function BookPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#F5F0E8] text-[#0A1628]">
+    <div className="flex-1 flex flex-col min-h-screen mesh-bg text-slate-100 font-sans">
       <Navbar />
 
-      <main className="flex-1 py-12 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <main className="flex-1 py-14 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        
+        {/* Header Title */}
+        <div className="text-center mb-10 space-y-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E2C044]/15 border border-[#E2C044]/30 text-xs font-bold text-[#E2C044]">
+            <Sparkles className="h-3.5 w-3.5" /> Fast-Track Booking Desk
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-extrabold font-heading text-white">
+            Schedule Counsel Consultation
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300">
+            Pick a date to view live available slots at MLR ASSOCIATES Chambers.
+          </p>
+        </div>
+
         {/* Step Indicator */}
         <div className="mb-10 max-w-sm mx-auto">
-          <div className="flex items-center justify-between text-xs font-semibold text-gray-500 uppercase">
-            <span className={step >= 1 ? 'text-[#0A1628] font-bold' : ''}>1. Schedule</span>
-            <span className={step >= 2 ? 'text-[#0A1628] font-bold' : ''}>2. Confirmed</span>
+          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className={step >= 1 ? 'text-[#E2C044]' : ''}>1. Schedule Slot</span>
+            <span className={step >= 2 ? 'text-[#E2C044]' : ''}>2. Confirmed</span>
           </div>
-          <div className="relative w-full h-1 bg-[#DCD6C5] rounded mt-2">
+          <div className="relative w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
             <div
-              className="absolute left-0 top-0 h-full bg-[#C9A84C] rounded transition-all duration-500"
+              className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#E2C044] to-[#F59E0B] transition-all duration-500"
               style={{ width: `${(step - 1) * 100}%` }}
             />
           </div>
@@ -165,45 +174,42 @@ export default function BookPage() {
 
         {/* ── STEP 1: Date & Time ── */}
         {step === 1 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold font-heading text-[#0A1628] flex items-center justify-center gap-2">
-                <CalendarDays className="h-6 w-6 text-[#C9A84C]" /> Book Your Consultation
-              </h2>
-              <p className="text-xs text-gray-500 mt-1">Select an available date and time slot at MLR Associates Chambers</p>
-            </div>
-
+          <div className="glass-panel rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-              {/* Calendar */}
-              <div className="md:col-span-5 flex justify-center bg-white p-4 rounded-xl border border-[#DCD6C5] shadow-sm">
+              
+              {/* Calendar Container */}
+              <div className="md:col-span-5 flex flex-col items-center bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-inner">
+                <p className="text-xs font-bold text-[#E2C044] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <CalendarDays className="h-4 w-4" /> Pick Hearing Date
+                </p>
                 <Calendar
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   disabled={disabledDays}
-                  className="rounded-md border-0"
+                  className="rounded-xl border-0 text-white"
                 />
               </div>
 
-              {/* Slots */}
-              <div className="md:col-span-7 space-y-4">
-                <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+              {/* Slots Container */}
+              <div className="md:col-span-7 space-y-5">
+                <Label className="text-xs font-bold text-cyan-400 uppercase tracking-wider block">
                   {selectedDate
                     ? `Available Slots — ${selectedDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`
-                    : 'Available Time Slots'}
+                    : '2. Select Chamber Slot'}
                 </Label>
 
                 {!selectedDate ? (
-                  <div className="text-center py-12 bg-white border border-dashed border-[#DCD6C5] rounded-xl text-xs text-gray-400 font-semibold">
-                    ← Select a date on the calendar to see available slots
+                  <div className="text-center py-14 bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl text-xs text-slate-400 font-semibold">
+                    ← Select a date on the calendar to inspect live available slots
                   </div>
                 ) : loadingSlots ? (
                   <div className="flex justify-center items-center py-14">
-                    <div className="h-7 w-7 border-[3px] border-[#0A1628] border-t-[#C9A84C] rounded-full animate-spin" />
+                    <div className="h-8 w-8 border-4 border-slate-800 border-t-[#E2C044] rounded-full animate-spin" />
                   </div>
                 ) : slots.length === 0 ? (
-                  <div className="text-center py-10 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-600 font-semibold">
-                    Chambers are closed on this date. Please pick another day.
+                  <div className="text-center py-10 bg-rose-950/60 border border-rose-800/80 rounded-2xl text-xs text-rose-300 font-semibold">
+                    Chambers are closed on this date. Please select another day.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -212,18 +218,20 @@ export default function BookPage() {
                         key={idx}
                         disabled={!s.isAvailable}
                         onClick={() => setSelectedSlot(s.slot)}
-                        className={`p-3 rounded-lg text-xs font-semibold border transition duration-200 flex flex-col items-center gap-1.5 ${
+                        className={`p-3.5 rounded-xl text-xs font-bold border transition duration-200 flex flex-col items-center gap-1.5 ${
                           !s.isAvailable
-                            ? 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed'
+                            ? 'bg-slate-900/40 text-slate-600 border-slate-900 cursor-not-allowed'
                             : selectedSlot === s.slot
-                              ? 'bg-[#0A1628] text-white border-[#C9A84C] shadow-md'
-                              : 'bg-white border-[#DCD6C5] text-[#0A1628] hover:border-[#C9A84C] hover:shadow-sm'
+                              ? 'bg-gradient-to-r from-[#E2C044] to-[#F59E0B] text-[#0B132B] border-[#E2C044] shadow-lg shadow-[#E2C044]/25'
+                              : 'bg-slate-900/80 border-slate-800 text-slate-200 hover:border-[#E2C044]'
                         }`}
                       >
-                        <span>{s.slot}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> {s.slot}
+                        </span>
                         {s.isAvailable && s.capacityLeft <= 2 && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                            selectedSlot === s.slot ? 'bg-[#C9A84C] text-[#0A1628]' : 'bg-rose-100 text-rose-600'
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                            selectedSlot === s.slot ? 'bg-[#0B132B] text-[#E2C044]' : 'bg-rose-950 border border-rose-500/40 text-rose-400'
                           }`}>
                             Only {s.capacityLeft} left
                           </span>
@@ -234,46 +242,49 @@ export default function BookPage() {
                 )}
 
                 {selectedSlot && (
-                  <div className="space-y-2 pt-2">
-                    <Label htmlFor="notes" className="text-xs font-bold text-gray-600">
-                      Brief Case Description <span className="font-normal text-gray-400">(Optional)</span>
+                  <div className="space-y-2 pt-2 animate-in fade-in duration-200">
+                    <Label htmlFor="notes" className="text-xs font-bold text-slate-300">
+                      Brief Case / Legal Summary <span className="font-normal text-slate-500">(Optional)</span>
                     </Label>
                     <Textarea
                       id="notes"
-                      placeholder="Describe your legal matter briefly so our counsel can prepare..."
+                      placeholder="Briefly state your matter (e.g. Land Partition, High Court Bail Appeal, Contract Audit)..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="border-[#DCD6C5] focus:border-[#C9A84C] text-xs min-h-[80px]"
+                      className="border-slate-800 bg-slate-950/80 focus:border-[#E2C044] text-slate-200 text-xs min-h-[90px] rounded-xl"
                     />
                   </div>
                 )}
 
                 {selectedDate && selectedSlot && (
-                  <div className="bg-[#0A1628]/5 border border-[#C9A84C]/30 rounded-lg p-3 text-xs space-y-1">
-                    <p className="font-bold text-[#0A1628]">Booking Summary</p>
-                    <p className="text-gray-600">
+                  <div className="bg-[#E2C044]/10 border border-[#E2C044]/30 rounded-xl p-4 text-xs space-y-1.5">
+                    <p className="font-bold gold-gradient-text flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4 text-[#E2C044]" /> Appointment Reservation Summary
+                    </p>
+                    <p className="text-slate-300">
                       📅 {selectedDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
-                    <p className="text-gray-600">🕐 {selectedSlot}</p>
-                    <p className="text-gray-600">📍 MLR Associates Chambers</p>
+                    <p className="text-slate-300">🕐 {selectedSlot}</p>
+                    <p className="text-slate-300">📍 MLR ASSOCIATES Chambers</p>
                   </div>
                 )}
               </div>
+
             </div>
 
-            <div className="flex justify-end border-t border-[#DCD6C5]/30 pt-6 mt-4">
+            <div className="flex justify-end border-t border-slate-800 pt-6">
               <Button
                 onClick={handleBookAppointment}
                 disabled={submitting || !selectedSlot || !selectedDate}
-                className="bg-[#0A1628] text-[#F5F0E8] hover:bg-[#0A1628]/90 text-sm font-semibold px-6 py-2.5 flex items-center gap-2"
+                className="bg-gradient-to-r from-[#E2C044] via-[#F3E5AB] to-[#B8860B] text-[#0B132B] hover:brightness-110 text-sm font-extrabold px-8 py-3.5 rounded-xl shadow-xl shadow-[#E2C044]/20 flex items-center gap-2 transition duration-200"
               >
                 {submitting ? (
                   <>
-                    <div className="h-4 w-4 border-2 border-white border-t-[#C9A84C] rounded-full animate-spin" />
-                    Confirming…
+                    <div className="h-4 w-4 border-2 border-[#0B132B] border-t-white rounded-full animate-spin" />
+                    Confirming Reservation…
                   </>
                 ) : (
-                  <>Confirm Appointment <ArrowRight className="h-4 w-4" /></>
+                  <>Lock Appointment Slot <ArrowRight className="h-4 w-4" /></>
                 )}
               </Button>
             </div>
@@ -283,51 +294,56 @@ export default function BookPage() {
         {/* ── STEP 2: Confirmation ── */}
         {step === 2 && appointment && (
           <div className="max-w-md mx-auto space-y-6">
-            <Card className="border border-emerald-200 shadow-lg bg-white overflow-hidden">
-              <div className="bg-emerald-600 p-8 text-white text-center">
-                <CheckCircle2 className="h-14 w-14 mx-auto mb-3 text-emerald-100" />
-                <h3 className="text-2xl font-bold font-heading">Appointment Confirmed!</h3>
+            <Card className="border border-emerald-500/40 shadow-2xl bg-slate-900/90 text-slate-100 rounded-3xl overflow-hidden backdrop-blur-xl">
+              <div className="bg-gradient-to-br from-emerald-600 to-teal-800 p-8 text-white text-center">
+                <CheckCircle2 className="h-16 w-16 mx-auto mb-3 text-emerald-200 animate-bounce" />
+                <h3 className="text-2xl font-extrabold font-heading">Consultation Confirmed!</h3>
                 <p className="text-xs text-emerald-200 mt-1">
-                  Reference: <span className="font-bold">{appointment.id.split('-')[0].toUpperCase()}</span>
+                  Chamber Ref: <span className="font-bold">{appointment.id.split('-')[0].toUpperCase()}</span>
                 </p>
               </div>
+
               <CardContent className="pt-6 space-y-4">
                 <div className="space-y-3 text-xs">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Date</span>
-                    <span className="font-bold text-[#0A1628]">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Date</span>
+                    <span className="font-bold text-white">
                       {selectedDate?.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Time Slot</span>
-                    <span className="font-bold text-[#0A1628]">{selectedSlot}</span>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Time Slot</span>
+                    <span className="font-bold text-white">{selectedSlot}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Chambers</span>
-                    <span className="font-bold text-[#0A1628]">MLR Associates</span>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Chambers</span>
+                    <span className="font-bold text-white">MLR ASSOCIATES</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-500">Status</span>
-                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Confirmed</span>
+                    <span className="text-slate-400">Status</span>
+                    <span className="font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-3 py-1 rounded-full">
+                      Confirmed
+                    </span>
                   </div>
                 </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-600 leading-relaxed">
-                  <strong>Next Steps:</strong> Our team will reach out to confirm your appointment. Please carry relevant documents to the consultation.
+
+                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-[11px] text-slate-300 leading-relaxed">
+                  <strong className="text-[#E2C044]">Next Steps:</strong> Our advocates registry will review your brief notes. Please bring any relevant document copies to your session.
                 </div>
               </CardContent>
-              <CardFooter className="border-t border-[#DCD6C5]/30 pt-4 flex flex-col gap-3">
+
+              <CardFooter className="border-t border-slate-800 pt-4 flex flex-col gap-3">
                 <Button
                   onClick={downloadICS}
-                  className="w-full bg-[#C9A84C] text-[#0A1628] hover:bg-[#C9A84C]/90 font-semibold text-xs py-2.5 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-[#E2C044] to-[#F59E0B] text-[#0B132B] font-extrabold text-xs py-3 rounded-xl flex items-center justify-center gap-2"
                 >
-                  <Download className="h-3.5 w-3.5" /> Add to Calendar (.ics)
+                  <Download className="h-4 w-4" /> Download iCal (.ics) Calendar File
                 </Button>
                 <Button
                   onClick={() => router.push('/dashboard')}
-                  className="w-full bg-[#0A1628] text-white hover:bg-[#0A1628]/90 text-xs font-semibold py-2.5"
+                  className="w-full bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs py-3 rounded-xl hover:bg-slate-700"
                 >
-                  Go to My Dashboard <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  Go to Client Portal <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </CardFooter>
             </Card>

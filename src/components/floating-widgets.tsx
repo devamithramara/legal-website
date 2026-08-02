@@ -1,77 +1,80 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Phone, MessageCircle, Clock } from 'lucide-react';
-
-// Get current date/time in Indian Standard Time (IST)
-export function getISTDate() {
-  const d = new Date();
-  const localTime = d.getTime();
-  const localOffset = d.getTimezoneOffset() * 60000;
-  const utc = localTime + localOffset;
-  const istOffset = 5.5 * 3600000; // IST is UTC + 5:30
-  return new Date(utc + istOffset);
-}
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { MessageSquare, PhoneCall, Clock, ShieldAlert, X, ChevronUp, Calendar, Sparkles } from 'lucide-react';
 
 export function OfficeHoursBadge() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const checkStatus = () => {
-      const istDate = getISTDate();
-      const day = istDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const hour = istDate.getHours();
-      
-      // Office hours: Mon-Sat, 10 AM to 6 PM IST
-      const isWorkingDay = day !== 0; // Sunday closed
-      const isWorkingHour = hour >= 10 && hour < 18;
-      
-      setIsOpen(isWorkingDay && isWorkingHour);
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!mounted) return null;
-
   return (
-    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
-      isOpen 
-        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' 
-        : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
-    }`}>
-      <Clock className="h-3.5 w-3.5" />
-      <span>{isOpen ? 'Open Now (IST)' : 'Closed (IST)'}</span>
+    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-[#E2C044]/40 text-xs font-semibold backdrop-blur-md shadow-lg">
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E2C044] opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E2C044]"></span>
+      </span>
+      <span className="text-slate-200">Chambers Active:</span>
+      <span className="gold-gradient-text font-bold">Mon - Sat (9:00 AM - 7:30 PM)</span>
     </div>
   );
 }
 
 export function FloatingWidgets() {
-  return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-      {/* Phone Button */}
-      <a
-        href="tel:+919444019923"
-        className="flex items-center justify-center h-12 w-12 rounded-full bg-[#0A1628] hover:bg-[#0A1628]/90 text-[#C9A84C] border border-[#C9A84C]/30 shadow-lg transition duration-300 hover:scale-110"
-        title="Call Firm Office"
-      >
-        <Phone className="h-5 w-5" />
-      </a>
+  const [expanded, setExpanded] = useState(false);
 
-      {/* WhatsApp Button */}
-      <a
-        href="https://wa.me/919444019923?text=Hello%2C%20I%20would%20like%20to%20inquire%20about%20a%20legal%20consultation."
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center h-14 w-14 rounded-full bg-[#25D366] hover:bg-[#22c35e] text-white shadow-xl transition duration-300 hover:scale-110 animate-pulse"
-        title="Chat on WhatsApp"
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      {/* Expanded Quick Options */}
+      {expanded && (
+        <div className="flex flex-col gap-2.5 animate-in slide-in-from-bottom duration-300">
+          <a
+            href="https://wa.me/919876543210?text=Hello%20MLR%20Associates,%20I%20need%20legal%20consultation"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl transition-all hover:scale-105"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>WhatsApp Quick Desk</span>
+          </a>
+
+          <a
+            href="tel:+919876543210"
+            className="flex items-center gap-3 bg-slate-900 border border-[#E2C044]/50 text-[#E2C044] text-xs font-bold px-4 py-2.5 rounded-full shadow-xl transition-all hover:scale-105 backdrop-blur-md"
+          >
+            <PhoneCall className="h-4 w-4 text-emerald-400" />
+            <span>Call Senior Counsel</span>
+          </a>
+
+          <Link
+            href="/book"
+            className="flex items-center gap-3 bg-gradient-to-r from-[#E2C044] to-[#F59E0B] text-[#0B132B] text-xs font-extrabold px-4 py-2.5 rounded-full shadow-xl transition-all hover:scale-105"
+          >
+            <Calendar className="h-4 w-4 text-[#0B132B]" />
+            <span>Book Calendar Slot</span>
+          </Link>
+        </div>
+      )}
+
+      {/* Main Floating Trigger Button */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+          expanded
+            ? 'bg-slate-800 text-slate-200 border-2 border-slate-600 scale-105'
+            : 'bg-gradient-to-tr from-[#E2C044] via-[#F3E5AB] to-[#B8860B] text-[#0B132B] shadow-[#E2C044]/30 hover:scale-110 gold-glow'
+        }`}
+        title="Quick Legal Help"
       >
-        <MessageCircle className="h-7 w-7" />
-      </a>
+        {expanded ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <div className="relative flex items-center justify-center">
+            <Sparkles className="h-6 w-6 text-[#0B132B]" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+          </div>
+        )}
+      </button>
     </div>
   );
 }
