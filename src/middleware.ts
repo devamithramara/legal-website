@@ -6,16 +6,24 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Check path permissions against token role
-    if (path.startsWith('/admin') && token?.role !== 'ADMIN') {
+    // JUNIOR attempt on /admin -> redirect to /junior/dashboard
+    if (path.startsWith('/admin')) {
+      if (token?.role === 'JUNIOR' || token?.role === 'INTERN') {
+        return NextResponse.redirect(new URL('/junior/dashboard', req.url));
+      }
+      if (token?.role !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/login', req.url));
+      }
+    }
+
+    if (path.startsWith('/junior') && token?.role !== 'JUNIOR' && token?.role !== 'INTERN' && token?.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/login', req.url));
     }
-    if (path.startsWith('/junior') && token?.role !== 'JUNIOR' && token?.role !== 'INTERN') {
-      return NextResponse.redirect(new URL('/login', req.url));
-    }
+
     if (path.startsWith('/dashboard') && token?.role !== 'CLIENT') {
       return NextResponse.redirect(new URL('/login', req.url));
     }
+
     return NextResponse.next();
   },
   {

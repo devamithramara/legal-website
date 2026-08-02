@@ -55,60 +55,76 @@ enum RecipientType {
 }
 
 model User {
-  id           String        @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
-  email        String        @unique
+  email        String   @unique
   phone        String?
-  role         Role          @default(CLIENT)
-  designation  String?       // e.g. "Junior Advocate", "Intern"
+  role         Role     @default(CLIENT)
+  designation  String?  // e.g. "Junior Advocate", "Intern"
   password     String
-  createdAt    DateTime      @default(now())
-  
+  createdAt    DateTime @default(now())
+
   appointments      Appointment[]
   clientCases       Case[]            @relation("ClientCases")
   juniorCases       Case[]            @relation("JuniorCases")
   juniorTasks       Task[]            @relation("JuniorTasks")
+  seniorTasks       Task[]            @relation("SeniorTasks")
   documents         Document[]
   invoices          Invoice[]
   testimonials      Testimonial[]
   hearingReminders  HearingReminder[]
+  timeLogs          TimeLog[]
+  dailyLogs         DailyLog[]
+  appearances       Appearance[]
+  drafts            Draft[]
+  researchLogs      ResearchLog[]
+  clientCallLogs    ClientCallLog[]
+  escalationsRaised Escalation[]      @relation("EscalationRaisedBy")
+  learningItems     LearningItem[]    @relation("LearningJunior")
+  assignedLearning  LearningItem[]    @relation("LearningAssignedBy")
+  skillTags         SkillTag[]        @relation("JuniorSkillTags")
 }
 
 model Appointment {
-  id            String            @id @default(uuid())
-  clientId      String
-  client        User              @relation(fields: [clientId], references: [id])
-  date          DateTime
-  timeSlot      String
-  caseType      String
-  status        AppointmentStatus @default(PENDING)
-  paymentId     String?
-  feePaid       Float
-  notes         String?
-  createdAt     DateTime          @default(now())
-  
-  documents     Document[]
+  id        String            @id @default(uuid())
+  clientId  String
+  client    User              @relation(fields: [clientId], references: [id])
+  date      DateTime
+  timeSlot  String
+  caseType  String
+  status    AppointmentStatus @default(PENDING)
+  paymentId String?
+  feePaid   Float
+  notes     String?
+  createdAt DateTime          @default(now())
+
+  documents Document[]
 }
 
 model Case {
-  id          String      @id @default(uuid())
+  id          String     @id @default(uuid())
   clientId    String
-  client      User        @relation("ClientCases", fields: [clientId], references: [id])
+  client      User       @relation("ClientCases", fields: [clientId], references: [id])
   assignedTo  String?
-  junior      User?       @relation("JuniorCases", fields: [assignedTo], references: [id])
-  caseNumber  String      @unique
+  junior      User?      @relation("JuniorCases", fields: [assignedTo], references: [id])
+  caseNumber  String     @unique
   title       String
   type        String
-  status      CaseStatus  @default(INTAKE)
+  status      CaseStatus @default(INTAKE)
   nextHearing DateTime?
   court       String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
   events           CaseEvent[]
   documents        Document[]
   tasks            Task[]
   hearingReminders HearingReminder[]
+  appearances      Appearance[]
+  drafts           Draft[]
+  researchLogs     ResearchLog[]
+  clientCallLogs   ClientCallLog[]
+  escalations      Escalation[]
 }
 
 model CaseEvent {
@@ -129,9 +145,11 @@ model Document {
   case          Case?        @relation(fields: [caseId], references: [id])
   appointmentId String?
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  taskId        String?
+  task          Task?        @relation(fields: [taskId], references: [id])
   name          String
   url           String
-  type          String       // e.g., ID Proof, Contract, Court Notice, Other
+  type          String       // e.g., ID Proof, Contract, Court Notice, Draft, Other
   createdAt     DateTime     @default(now())
 }
 
@@ -170,13 +188,160 @@ model Task {
   id            String     @id @default(uuid())
   caseId        String
   case          Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  assignedTo    String?
-  junior        User?      @relation("JuniorTasks", fields: [assignedTo], references: [id])
+  assignedTo    String
+  junior        User       @relation("JuniorTasks", fields: [assignedTo], references: [id])
+  assignedBy    String?
+  senior        User?      @relation("SeniorTasks", fields: [assignedBy], references: [id])
   title         String
-  status        TaskStatus @default(TODO)
+  type          String     @default("RESEARCH") // DRAFT | RESEARCH | FILING | COURT | CLIENT_CALL | TRAVEL
+  priority      String     @default("NORMAL")   // URGENT | NORMAL | LOW
+  status        String     @default("ASSIGNED") // ASSIGNED | IN_PROGRESS | REVIEW | DONE
   deadline      DateTime?
+  notes         String?
+  rating        Int?       // 1-5 senior feedback rating
+  feedback      String?    // senior feedback note
   billableHours Float      @default(0)
   createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @default(now()) @updatedAt
+
+  timeLogs  TimeLog[]
+  documents Document[]
+}
+
+model TimeLog {
+  id          String    @id @default(uuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  juniorId    String
+  junior      User      @relation(fields: [juniorId], references: [id])
+  category    String    @default("RESEARCH") // RESEARCH | DRAFTING | COURT | CLIENT | FILING | TRAVEL
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Float?    // hours, calculated on stop
+  description String?
+  approved    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+model DailyLog {
+  id             String    @id @default(uuid())
+  juniorId       String
+  junior         User      @relation(fields: [juniorId], references: [id])
+  date           DateTime
+  tasksCompleted String[]  // task IDs
+  hoursWorked    Float
+  courtVisited   Boolean   @default(false)
+  issues         String?
+  escalate       Boolean   @default(false)
+  submittedAt    DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+model Appearance {
+  id         String    @id @default(uuid())
+  caseId     String
+  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  juniorId   String
+  junior     User      @relation(fields: [juniorId], references: [id])
+  date       DateTime
+  court      String
+  hallNumber String?
+  timeIn     DateTime?
+  timeOut    DateTime?
+  outcome    String    @default("ADJOURNED") // ADJOURNED | ARGUMENTS | ORDER | PART_HEARD
+  nextDate   DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+}
+
+model Draft {
+  id        String   @id @default(uuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  juniorId  String
+  junior    User     @relation(fields: [juniorId], references: [id])
+  title     String
+  type      String   @default("PETITION") // PETITION | AFFIDAVIT | NOTICE | WRITTEN_STATEMENT | VAKALATNAMA
+  status    String   @default("DRAFT")    // DRAFT | UNDER_REVIEW | APPROVED | FILED | REDO
+  version   Int      @default(1)
+  fileUrl   String   // Cloudinary URL
+  comments  String?  // senior inline comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model ResearchLog {
+  id        String   @id @default(uuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  juniorId  String
+  junior    User     @relation(fields: [juniorId], references: [id])
+  sections  String[] // IPC sections referred
+  citations String[] // case law citations
+  source    String   @default("SCC") // SCC | MANUPATRA | INDIANKANOON | BARE_ACT
+  summary   String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ClientCallLog {
+  id          String   @id @default(uuid())
+  caseId      String
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  juniorId    String
+  junior      User     @relation(fields: [juniorId], references: [id])
+  clientId    String
+  date        DateTime @default(now())
+  duration    Int      // minutes
+  summary     String
+  actionItems String[]
+  escalate    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Escalation {
+  id          String    @id @default(uuid())
+  caseId      String
+  case        Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  raisedBy    String
+  junior      User      @relation("EscalationRaisedBy", fields: [raisedBy], references: [id])
+  reason      String    @default("STRATEGY") // UNREACHABLE_CLIENT | UNEXPECTED_FILING | STRATEGY | OTHER
+  description String
+  status      String    @default("OPEN")     // OPEN | ACKNOWLEDGED | RESOLVED
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model LearningItem {
+  id         String   @id @default(uuid())
+  juniorId   String
+  junior     User     @relation("LearningJunior", fields: [juniorId], references: [id])
+  assignedBy String
+  senior     User     @relation("LearningAssignedBy", fields: [assignedBy], references: [id])
+  title      String
+  type       String   @default("BARE_ACT") // BARE_ACT | JUDGMENT | PROCEDURE | VIDEO | NOTE
+  content    String   // URL or text
+  summary    String?  // junior's 3-line summary after reading
+  status     String   @default("ASSIGNED") // ASSIGNED | READ | REVIEWED | REDO
+  createdAt  DateTime @default(now())
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  title     String
+  type      String   @default("BAIL") // BAIL | STAY | NOTICE | VAKALATNAMA | WRITTEN_STATEMENT
+  fileUrl   String
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model SkillTag {
+  id        String   @id @default(uuid())
+  juniorId  String
+  junior    User     @relation("JuniorSkillTags", fields: [juniorId], references: [id])
+  tag       String   // CRIMINAL | CIVIL | PROPERTY | FAMILY | CORPORATE | RESEARCH
+  addedBy   String
+  createdAt DateTime @default(now())
 }
 
 model Testimonial {
@@ -212,4 +377,3 @@ model ReminderSetting {
   customMessage     String?
   updatedAt         DateTime @updatedAt
 }
-

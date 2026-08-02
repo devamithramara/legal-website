@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,11 @@ import {
   UserPlus,
   GraduationCap,
   Shield,
-  X
+  X,
+  Award,
+  ChevronRight,
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
@@ -57,7 +62,12 @@ export default function AdminJuniors() {
   const [cases, setCases] = useState<{ id: string; caseNumber: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Task allocation Modal State
+  // Performance Drawer State
+  const [selectedJunior, setSelectedJunior] = useState<JuniorItem | null>(null);
+  const [performanceData, setPerformanceData] = useState<any | null>(null);
+  const [loadingPerf, setLoadingPerf] = useState(false);
+
+  // Modals State
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskJuniorId, setTaskJuniorId] = useState('');
   const [taskCaseId, setTaskCaseId] = useState('');
@@ -65,7 +75,6 @@ export default function AdminJuniors() {
   const [taskDeadline, setTaskDeadline] = useState('');
   const [submittingTask, setSubmittingTask] = useState(false);
 
-  // Add Junior/Intern Modal State
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -74,6 +83,18 @@ export default function AdminJuniors() {
   const [newDesignation, setNewDesignation] = useState('');
   const [submittingAdd, setSubmittingAdd] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+
+  // Skill Tag Modal
+  const [skillModalOpen, setSkillModalOpen] = useState(false);
+  const [skillTag, setSkillTag] = useState('CRIMINAL');
+  const [submittingSkill, setSubmittingSkill] = useState(false);
+
+  // Learning Item Modal
+  const [learnModalOpen, setLearnModalOpen] = useState(false);
+  const [learnTitle, setLearnTitle] = useState('');
+  const [learnType, setLearnType] = useState('BARE_ACT');
+  const [learnContent, setLearnContent] = useState('');
+  const [submittingLearn, setSubmittingLearn] = useState(false);
 
   // Remove confirmation
   const [removeTarget, setRemoveTarget] = useState<JuniorItem | null>(null);
@@ -104,7 +125,21 @@ export default function AdminJuniors() {
     fetchData();
   }, []);
 
-  // ── Task Allocation ────────────────────────────────────────────────────────
+  const openPerformanceDrawer = async (junior: JuniorItem) => {
+    setSelectedJunior(junior);
+    setLoadingPerf(true);
+    try {
+      const res = await fetch(`/api/juniors/performance?juniorId=${junior.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPerformanceData(data.performance);
+      }
+    } catch {
+      toast('Failed to load performance metrics.', 'error');
+    } finally {
+      setLoadingPerf(false);
+    }
+  };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,14 +173,73 @@ export default function AdminJuniors() {
       } else {
         toast(data.error || 'Failed to allocate task.', 'error');
       }
-    } catch (err) {
+    } catch {
       toast('Network error allocating task.', 'error');
     } finally {
       setSubmittingTask(false);
     }
   };
 
-  // ── Add Junior / Intern ────────────────────────────────────────────────────
+  const handleAddSkillTag = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJunior) return;
+
+    setSubmittingSkill(true);
+    try {
+      const res = await fetch('/api/skilltags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ juniorId: selectedJunior.id, tag: skillTag }),
+      });
+
+      if (res.ok) {
+        toast(`Skill tag "${skillTag}" awarded to ${selectedJunior.name}!`, 'success');
+        setSkillModalOpen(false);
+        openPerformanceDrawer(selectedJunior);
+      } else {
+        toast('Failed to add skill tag.', 'error');
+      }
+    } catch {
+      toast('Network error adding skill tag.', 'error');
+    } finally {
+      setSubmittingSkill(false);
+    }
+  };
+
+  const handleAssignLearning = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJunior || !learnTitle || !learnContent) {
+      toast('Please provide learning item title and content/link.', 'error');
+      return;
+    }
+
+    setSubmittingLearn(true);
+    try {
+      const res = await fetch('/api/learning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          juniorId: selectedJunior.id,
+          title: learnTitle,
+          type: learnType,
+          content: learnContent,
+        }),
+      });
+
+      if (res.ok) {
+        toast(`Learning item assigned to ${selectedJunior.name}!`, 'success');
+        setLearnModalOpen(false);
+        setLearnTitle('');
+        setLearnContent('');
+      } else {
+        toast('Failed to assign learning item.', 'error');
+      }
+    } catch {
+      toast('Network error assigning learning item.', 'error');
+    } finally {
+      setSubmittingLearn(false);
+    }
+  };
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,85 +275,71 @@ export default function AdminJuniors() {
       } else {
         toast(data.error || 'Failed to add team member.', 'error');
       }
-    } catch (err) {
+    } catch {
       toast('Network error adding team member.', 'error');
     } finally {
       setSubmittingAdd(false);
     }
   };
 
-  // ── Remove Junior / Intern ─────────────────────────────────────────────────
-
   const handleRemove = async () => {
     if (!removeTarget) return;
 
     setRemovingId(removeTarget.id);
     try {
-      const res = await fetch(`/api/juniors?id=${removeTarget.id}`, {
-        method: 'DELETE',
-      });
-
+      const res = await fetch(`/api/juniors?id=${removeTarget.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok && data.success) {
-        toast(`${removeTarget.name} has been removed from the team.`, 'success');
+        toast(`${removeTarget.name} removed.`, 'success');
         setRemoveTarget(null);
         fetchData();
       } else {
         toast(data.error || 'Failed to remove team member.', 'error');
       }
-    } catch (err) {
-      toast('Network error removing team member.', 'error');
+    } catch {
+      toast('Network error removing member.', 'error');
     } finally {
       setRemovingId(null);
     }
   };
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  const getLoadBadge = (count: number) => {
-    if (count >= 3) {
-      return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-rose-100 bg-rose-50 text-rose-600">High Load</span>;
-    }
-    if (count >= 1) {
-      return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-100 bg-blue-50 text-blue-600">Active</span>;
-    }
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600">Available</span>;
-  };
-
-  const getRoleBadge = (role: string) => {
-    if (role === 'INTERN') {
-      return (
-        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-violet-200 bg-violet-50 text-violet-600 flex items-center gap-1">
-          <GraduationCap className="h-2.5 w-2.5" /> Intern
-        </span>
-      );
-    }
-    return (
-      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-sky-200 bg-sky-50 text-sky-600 flex items-center gap-1">
-        <Shield className="h-2.5 w-2.5" /> Junior
-      </span>
-    );
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header bar */}
+      
+      {/* Top Header & Admin Sub-Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold font-heading text-[#0A1628]">Team Members</h2>
-          <p className="text-xs text-gray-500 font-medium">Manage junior advocates, interns, workloads, and task allocations</p>
+          <h2 className="text-2xl font-bold font-heading text-[#0A1628]">Junior Advocate Management</h2>
+          <p className="text-xs text-gray-500 font-medium">Monitor performances, approve timesheets/drafts, and manage escalations</p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/juniors/timesheets">
+            <Button variant="outline" className="border-[#DCD6C5] text-xs font-bold text-gray-700 bg-white">
+              <Clock className="h-3.5 w-3.5 text-[#C9A84C] mr-1" /> Timesheets
+            </Button>
+          </Link>
+          <Link href="/admin/juniors/drafts">
+            <Button variant="outline" className="border-[#DCD6C5] text-xs font-bold text-gray-700 bg-white">
+              <FileText className="h-3.5 w-3.5 text-[#C9A84C] mr-1" /> Drafts
+            </Button>
+          </Link>
+          <Link href="/admin/juniors/escalations">
+            <Button variant="outline" className="border-rose-200 text-xs font-bold text-rose-600 bg-rose-50">
+              <AlertTriangle className="h-3.5 w-3.5 text-rose-600 mr-1" /> Escalations
+            </Button>
+          </Link>
+
           <Button 
             onClick={() => { setAddModalOpen(true); setGeneratedPassword(null); }}
             variant="outline"
-            className="border-[#DCD6C5] hover:border-[#0A1628] hover:bg-slate-50 text-xs font-semibold px-4 flex items-center gap-1.5 text-gray-700 bg-white"
+            className="border-[#DCD6C5] text-xs font-semibold text-gray-700 bg-white"
           >
             <UserPlus className="h-4 w-4 text-[#C9A84C]" /> Add Member
           </Button>
           <Button 
             onClick={() => setTaskModalOpen(true)}
-            className="bg-[#0A1628] hover:bg-[#0A1628]/95 text-white text-xs font-semibold px-4 flex items-center gap-1.5"
+            className="bg-[#0A1628] hover:bg-[#0A1628]/95 text-white text-xs font-semibold"
           >
             <Plus className="h-4 w-4" /> Allocate Task
           </Button>
@@ -272,404 +352,225 @@ export default function AdminJuniors() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Team Members list */}
+          
+          {/* Main Roster Table */}
           <div className="lg:col-span-8">
             <Card className="border border-[#DCD6C5] bg-white shadow-sm overflow-hidden">
               <CardHeader className="border-b border-[#DCD6C5]/30">
                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-[#0A1628] flex items-center gap-2">
-                  <UsersRound className="h-4.5 w-4.5 text-[#C9A84C]" /> Team Roster & Workload
+                  <UsersRound className="h-4.5 w-4.5 text-[#C9A84C]" /> Advocate Roster (Click Row for Performance Drawer)
                 </CardTitle>
-                <CardDescription className="text-[10px]">
-                  {juniors.filter(j => j.role === 'JUNIOR').length} Junior{juniors.filter(j => j.role === 'JUNIOR').length !== 1 ? 's' : ''} · {juniors.filter(j => j.role === 'INTERN').length} Intern{juniors.filter(j => j.role === 'INTERN').length !== 1 ? 's' : ''}
-                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                {juniors.length === 0 ? (
-                  <div className="text-center py-12 space-y-3">
-                    <UserPlus className="h-10 w-10 text-[#C9A84C] mx-auto opacity-50" />
-                    <p className="text-xs text-gray-400 font-semibold">No team members registered yet.</p>
-                    <Button 
-                      onClick={() => { setAddModalOpen(true); setGeneratedPassword(null); }}
-                      variant="outline"
-                      className="border-[#C9A84C] text-[#C9A84C] hover:bg-[#C9A84C]/5 text-xs font-bold"
-                    >
-                      <UserPlus className="h-3.5 w-3.5 mr-1" /> Add First Member
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-[#DCD6C5]/40 text-xs">
-                      <thead className="bg-gray-50/70 text-gray-500 uppercase tracking-wider text-[10px] font-bold">
-                        <tr>
-                          <th className="px-6 py-3.5 text-left">Member</th>
-                          <th className="px-6 py-3.5 text-left">Role</th>
-                          <th className="px-6 py-3.5 text-left">Caseload</th>
-                          <th className="px-6 py-3.5 text-left">Tasks</th>
-                          <th className="px-6 py-3.5 text-left">Hours</th>
-                          <th className="px-6 py-3.5 text-right">Actions</th>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-[#DCD6C5]/40 text-xs">
+                    <thead className="bg-gray-50/70 text-gray-500 uppercase tracking-wider text-[10px] font-bold">
+                      <tr>
+                        <th className="px-6 py-3.5 text-left">Advocate</th>
+                        <th className="px-6 py-3.5 text-left">Role</th>
+                        <th className="px-6 py-3.5 text-left">Caseload</th>
+                        <th className="px-6 py-3.5 text-left">Hours</th>
+                        <th className="px-6 py-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DCD6C5]/30 bg-white">
+                      {juniors.map((j) => (
+                        <tr 
+                          key={j.id} 
+                          onClick={() => openPerformanceDrawer(j)}
+                          className="hover:bg-slate-50/80 transition cursor-pointer"
+                        >
+                          <td className="px-6 py-4">
+                            <p className="font-bold text-[#0A1628] flex items-center gap-1">
+                              {j.name} <ChevronRight className="h-3 w-3 text-[#C9A84C]" />
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-medium">{j.email}</p>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-bold text-gray-700">{j.role}</td>
+                          <td className="px-6 py-4 font-semibold text-gray-600">{j.caseloadCount} Active</td>
+                          <td className="px-6 py-4 font-bold text-[#0A1628]">{j.billableHours.toFixed(1)} hrs</td>
+                          <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => setRemoveTarget(j)}
+                              className="text-gray-400 hover:text-rose-600 transition p-1.5 rounded hover:bg-rose-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#DCD6C5]/30 bg-white">
-                        {juniors.map((j) => (
-                          <tr key={j.id} className="hover:bg-slate-50/50 transition">
-                            <td className="px-6 py-4">
-                              <p className="font-bold text-[#0A1628]">{j.name}</p>
-                              <p className="text-[10px] text-gray-400 font-medium">{j.email}</p>
-                              {j.phone && <p className="text-[10px] text-gray-400 font-medium">{j.phone}</p>}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="space-y-1">
-                                {getRoleBadge(j.role)}
-                                <p className="text-[10px] text-gray-500 font-medium">{j.designation}</p>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 space-y-1">
-                              <p className="font-semibold text-gray-600">{j.caseloadCount} Active</p>
-                              {getLoadBadge(j.caseloadCount)}
-                            </td>
-                            <td className="px-6 py-4 font-semibold text-gray-600">
-                              <p>{j.pendingTasks} Pending</p>
-                              <p className="text-[10px] text-gray-400 font-medium">({j.totalTasks} total)</p>
-                            </td>
-                            <td className="px-6 py-4 font-bold text-[#0A1628]">
-                              {j.billableHours.toFixed(1)} hrs
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button
-                                onClick={() => setRemoveTarget(j)}
-                                className="text-gray-400 hover:text-rose-600 transition p-1.5 rounded hover:bg-rose-50"
-                                title={`Remove ${j.name}`}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Task board timeline */}
-          <div className="lg:col-span-4 space-y-6">
-            <Card className="border border-[#DCD6C5] bg-white shadow-sm">
-              <CardHeader className="border-b border-[#DCD6C5]/30">
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-[#0A1628] flex items-center gap-2">
-                  <Sliders className="h-4.5 w-4.5 text-[#C9A84C]" /> Active Allocation Feed
-                </CardTitle>
-                <CardDescription className="text-[10px]">Track newest allocated case assignments</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {tasks.length === 0 ? (
-                  <p className="text-center py-6 text-xs text-gray-400 italic font-semibold">No active tasks.</p>
-                ) : (
-                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin">
-                    {tasks.map((task) => (
-                      <div key={task.id} className="p-3 border border-[#DCD6C5]/20 rounded bg-[#F5F0E8]/30 text-[11px] space-y-2">
-                        <div className="flex justify-between items-start gap-3">
-                          <div>
-                            <p className="font-bold text-[#0A1628]">{task.title}</p>
-                            <p className="text-[10px] text-gray-500 font-semibold">Advocate: {task.junior.name}</p>
-                          </div>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            task.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                          }`}>{task.status}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 border-t border-[#DCD6C5]/20 pt-2 font-medium">
-                          <span>CNR: {task.case.caseNumber}</span>
-                          <span>Logged: {task.billableHours} hrs</span>
-                        </div>
-                      </div>
-                    ))}
+          {/* PERFORMANCE DETAIL DRAWER PANEL */}
+          <div className="lg:col-span-4">
+            {selectedJunior ? (
+              <Card className="border border-[#C9A84C] bg-white shadow-lg space-y-4 p-5">
+                <div className="flex items-center justify-between border-b border-[#DCD6C5] pb-3">
+                  <div>
+                    <h3 className="font-bold text-[#0A1628] text-sm">{selectedJunior.name}</h3>
+                    <p className="text-[10px] text-gray-500 font-semibold">{selectedJunior.designation || 'Junior Advocate'}</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <button onClick={() => setSelectedJunior(null)} className="text-gray-400 hover:text-black">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {loadingPerf ? (
+                  <div className="flex justify-center py-10">
+                    <div className="h-6 w-6 border-3 border-[#0A1628] border-t-[#C9A84C] rounded-full animate-spin" />
+                  </div>
+                ) : performanceData ? (
+                  <div className="space-y-4 text-xs">
+                    
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="p-2.5 rounded bg-slate-50 border border-[#DCD6C5]/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase">Completion Rate</p>
+                        <p className="text-lg font-extrabold text-[#0A1628]">{performanceData.completionRate}%</p>
+                      </div>
+                      <div className="p-2.5 rounded bg-slate-50 border border-[#DCD6C5]/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase">Approved Billable</p>
+                        <p className="text-lg font-extrabold text-[#C9A84C]">{performanceData.totalBillableHours} hrs</p>
+                      </div>
+                      <div className="p-2.5 rounded bg-slate-50 border border-[#DCD6C5]/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase">Court Appearances</p>
+                        <p className="text-lg font-extrabold text-[#0A1628]">{performanceData.appearancesCount}</p>
+                      </div>
+                      <div className="p-2.5 rounded bg-slate-50 border border-[#DCD6C5]/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase">Drafts Approved/REDO</p>
+                        <p className="text-lg font-extrabold text-emerald-600">{performanceData.draftsApproved} / {performanceData.draftsRedo}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="font-bold text-gray-700 text-[11px]">Skill Badges:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {performanceData.skillTags.length === 0 ? (
+                          <p className="text-[10px] text-gray-400 italic">No skill tags added yet.</p>
+                        ) : (
+                          performanceData.skillTags.map((st: string, idx: number) => (
+                            <span key={idx} className="bg-[#C9A84C]/15 text-[#0A1628] font-bold text-[9px] px-2 py-0.5 rounded">
+                              🏆 {st}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#DCD6C5] flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setSkillModalOpen(true)}
+                        className="bg-[#0A1628] text-white text-xs font-bold w-full"
+                      >
+                        <Award className="h-3.5 w-3.5 mr-1" /> Add Skill Tag
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLearnModalOpen(true)}
+                        className="border-[#DCD6C5] text-xs font-bold w-full"
+                      >
+                        <GraduationCap className="h-3.5 w-3.5 mr-1 text-[#C9A84C]" /> Assign Learning Item
+                      </Button>
+                    </div>
+
+                  </div>
+                ) : null}
+              </Card>
+            ) : (
+              <div className="p-8 border border-dashed border-[#DCD6C5] rounded-xl text-center text-xs text-gray-400 font-semibold">
+                Click any junior advocate in the roster to view complete performance drawer metrics and assign skill tags.
+              </div>
+            )}
           </div>
+
         </div>
       )}
 
-      {/* ─── ADD MEMBER DIALOG ──────────────────────────────────────────────── */}
-      <Dialog open={addModalOpen} onOpenChange={(open) => { setAddModalOpen(open); if (!open) setGeneratedPassword(null); }}>
+      {/* MODAL: ADD SKILL TAG */}
+      <Dialog open={skillModalOpen} onOpenChange={setSkillModalOpen}>
         <DialogContent className="bg-white max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-heading text-[#0A1628]">Add Team Member</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">Register a new junior advocate or intern to the firm.</DialogDescription>
+            <DialogTitle className="font-heading text-[#0A1628]">Add Skill Tag</DialogTitle>
           </DialogHeader>
-
-          {generatedPassword ? (
-            // Show credentials after successful creation
-            <div className="space-y-4 py-2">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center space-y-2">
-                <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
-                <p className="text-sm font-bold text-emerald-700">Member Added Successfully!</p>
-              </div>
-              <div className="bg-[#F5F0E8] border border-[#DCD6C5] rounded-lg p-4 space-y-2">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Login Credentials</p>
-                <div className="space-y-1 text-xs">
-                  <p><span className="text-gray-500">Email:</span> <strong className="text-[#0A1628]">{newEmail || 'See above'}</strong></p>
-                  <p><span className="text-gray-500">Temporary Password:</span> <strong className="text-[#0A1628] font-mono">{generatedPassword}</strong></p>
-                </div>
-                <p className="text-[10px] text-amber-600 font-semibold mt-2">
-                  ⚠ Please share these credentials securely. The member should change their password after first login.
-                </p>
-              </div>
-              <DialogFooter>
-                <Button
-                  onClick={() => { setAddModalOpen(false); setGeneratedPassword(null); }}
-                  className="bg-[#0A1628] text-white hover:bg-[#0A1628]/95 text-xs font-semibold w-full"
-                >
-                  Done
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <form onSubmit={handleAddMember} className="space-y-4">
-              {/* Role selector */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNewRole('JUNIOR')}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-xs font-bold transition duration-150 ${
-                    newRole === 'JUNIOR'
-                      ? 'bg-[#0A1628] text-white border-[#0A1628]'
-                      : 'bg-white text-gray-600 border-[#DCD6C5] hover:border-[#0A1628]/50'
-                  }`}
-                >
-                  <Shield className="h-3.5 w-3.5" /> Junior Advocate
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewRole('INTERN')}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-xs font-bold transition duration-150 ${
-                    newRole === 'INTERN'
-                      ? 'bg-violet-600 text-white border-violet-600'
-                      : 'bg-white text-gray-600 border-[#DCD6C5] hover:border-violet-400'
-                  }`}
-                >
-                  <GraduationCap className="h-3.5 w-3.5" /> Intern
-                </button>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="mName" className="text-xs font-bold text-gray-600">Full Name *</Label>
-                <Input 
-                  id="mName" 
-                  placeholder="e.g. Priya Sharma" 
-                  value={newName} 
-                  onChange={(e) => setNewName(e.target.value)} 
-                  className="border-[#DCD6C5] text-xs bg-white"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="mEmail" className="text-xs font-bold text-gray-600">Email Address *</Label>
-                <Input 
-                  id="mEmail" 
-                  type="email"
-                  placeholder="priya@mlrassociates.in" 
-                  value={newEmail} 
-                  onChange={(e) => setNewEmail(e.target.value)} 
-                  className="border-[#DCD6C5] text-xs bg-white"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="mPhone" className="text-xs font-bold text-gray-600">Phone</Label>
-                  <Input 
-                    id="mPhone" 
-                    placeholder="+91 98765..." 
-                    value={newPhone} 
-                    onChange={(e) => setNewPhone(e.target.value)} 
-                    className="border-[#DCD6C5] text-xs bg-white"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="mDesig" className="text-xs font-bold text-gray-600">Designation</Label>
-                  <Input 
-                    id="mDesig" 
-                    placeholder={newRole === 'INTERN' ? 'e.g. Law Intern' : 'e.g. Associate'} 
-                    value={newDesignation} 
-                    onChange={(e) => setNewDesignation(e.target.value)} 
-                    className="border-[#DCD6C5] text-xs bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-3 text-[10px] text-gray-500 font-medium">
-                A login password will be auto-generated and displayed after creation. Share it securely with the new member.
-              </div>
-
-              <DialogFooter className="pt-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setAddModalOpen(false)}
-                  className="border-[#DCD6C5] text-xs font-semibold"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={submittingAdd}
-                  className="bg-[#0A1628] text-white hover:bg-[#0A1628]/95 text-xs font-semibold"
-                >
-                  {submittingAdd ? 'Adding...' : `Add ${newRole === 'INTERN' ? 'Intern' : 'Junior'}`}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ─── REMOVE CONFIRMATION DIALOG ─────────────────────────────────────── */}
-      <Dialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
-        <DialogContent className="bg-white max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-[#0A1628]">Remove Team Member</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-
-          {removeTarget && (
-            <div className="space-y-4 py-2">
-              <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 space-y-2 text-center">
-                <Trash2 className="h-8 w-8 text-rose-500 mx-auto" />
-                <p className="text-sm font-bold text-rose-700">
-                  Remove {removeTarget.name}?
-                </p>
-                <p className="text-[11px] text-rose-600 font-medium">
-                  {removeTarget.role === 'INTERN' ? 'Intern' : 'Junior Advocate'} · {removeTarget.email}
-                </p>
-              </div>
-
-              {(removeTarget.caseloadCount > 0 || removeTarget.totalTasks > 0) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-700 font-medium space-y-1">
-                  <p className="font-bold flex items-center gap-1">
-                    <AlertCircle className="h-3.5 w-3.5" /> Warning
-                  </p>
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    {removeTarget.caseloadCount > 0 && (
-                      <li>{removeTarget.caseloadCount} case{removeTarget.caseloadCount > 1 ? 's' : ''} will be unassigned</li>
-                    )}
-                    {removeTarget.totalTasks > 0 && (
-                      <li>{removeTarget.totalTasks} task{removeTarget.totalTasks > 1 ? 's' : ''} will be deleted</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              <DialogFooter className="gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setRemoveTarget(null)}
-                  className="border-[#DCD6C5] text-xs font-semibold flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleRemove}
-                  disabled={removingId === removeTarget.id}
-                  className="bg-rose-600 text-white hover:bg-rose-700 text-xs font-semibold flex-1 flex items-center justify-center gap-1"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {removingId === removeTarget.id ? 'Removing...' : 'Remove'}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ─── ALLOCATE TASK DIALOG ───────────────────────────────────────────── */}
-      <Dialog open={taskModalOpen} onOpenChange={setTaskModalOpen}>
-        <DialogContent className="bg-white max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-[#0A1628]">Allocate Counsel Task</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">Log a procedural task brief for junior representation.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateTask} className="space-y-4">
+          <form onSubmit={handleAddSkillTag} className="space-y-4 text-xs">
             <div className="space-y-1.5">
-              <Label htmlFor="tJunior" className="text-xs font-bold text-gray-600">Select Advocate</Label>
-              <Select value={taskJuniorId} onValueChange={(val) => setTaskJuniorId(val || '')}>
-                <SelectTrigger className="border-[#DCD6C5] text-xs bg-white">
-                  <SelectValue placeholder="Junior Advocate / Intern" />
-                </SelectTrigger>
-                <SelectContent className="bg-white text-xs">
-                  {juniors.map((j) => (
-                    <SelectItem key={j.id} value={j.id} className="text-xs">
-                      {j.name} <span className="text-gray-400 ml-1">({j.role === 'INTERN' ? 'Intern' : 'Junior'})</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tCase" className="text-xs font-bold text-gray-600">Associated Court Case</Label>
-              <Select value={taskCaseId} onValueChange={(val) => setTaskCaseId(val || '')}>
-                <SelectTrigger className="border-[#DCD6C5] text-xs bg-white">
-                  <SelectValue placeholder="Case Folder" />
-                </SelectTrigger>
-                <SelectContent className="bg-white text-xs">
-                  {cases.map((c) => (
-                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.caseNumber} - {c.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tTitle" className="text-xs font-bold text-gray-600">Task Title / Brief</Label>
-              <Input 
-                id="tTitle" 
-                placeholder="e.g. Draft Written Statement" 
-                value={taskTitle} 
-                onChange={(e) => setTaskTitle(e.target.value)} 
-                className="border-[#DCD6C5] text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tDeadline" className="text-xs font-bold text-gray-600">Deadline (Optional)</Label>
-              <Input 
-                id="tDeadline" 
-                type="date" 
-                value={taskDeadline} 
-                onChange={(e) => setTaskDeadline(e.target.value)} 
-                className="border-[#DCD6C5] text-xs"
-              />
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setTaskModalOpen(false)}
-                className="border-[#DCD6C5] text-xs font-semibold"
+              <Label className="font-bold text-gray-600">Select Skill Badge *</Label>
+              <select
+                value={skillTag}
+                onChange={(e) => setSkillTag(e.target.value)}
+                className="w-full h-10 px-3 bg-white border border-[#DCD6C5] text-xs rounded-xl font-bold"
               >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={submittingTask}
-                className="bg-[#0A1628] text-white hover:bg-[#0A1628]/95 text-xs font-semibold"
-              >
-                {submittingTask ? 'Allocating...' : 'Allocate Task'}
+                <option value="CRIMINAL">CRIMINAL LAW</option>
+                <option value="CIVIL">CIVIL LITIGATION</option>
+                <option value="PROPERTY">PROPERTY DISPUTES</option>
+                <option value="FAMILY">FAMILY LAW</option>
+                <option value="CORPORATE">CORPORATE & ARBITRATION</option>
+                <option value="RESEARCH">CASE LAW RESEARCH</option>
+              </select>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={submittingSkill} className="bg-[#0A1628] text-white text-xs font-semibold">
+                Award Badge
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL: ASSIGN LEARNING ITEM */}
+      <Dialog open={learnModalOpen} onOpenChange={setLearnModalOpen}>
+        <DialogContent className="bg-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-[#0A1628]">Assign Learning Item</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAssignLearning} className="space-y-4 text-xs">
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-600">Title *</Label>
+              <Input
+                placeholder="e.g. Landmark Judgment on Bail Sec 438"
+                value={learnTitle}
+                onChange={(e) => setLearnTitle(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-600">Type *</Label>
+              <select
+                value={learnType}
+                onChange={(e) => setLearnType(e.target.value)}
+                className="w-full h-10 px-3 bg-white border border-[#DCD6C5] text-xs rounded-xl font-bold"
+              >
+                <option value="BARE_ACT">BARE ACT</option>
+                <option value="JUDGMENT">JUDGMENT / PRECEDENT</option>
+                <option value="PROCEDURE">COURT PROCEDURE</option>
+                <option value="VIDEO">VIDEO LECTURE</option>
+                <option value="NOTE">PRACTICE NOTE</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-600">URL / Text Content *</Label>
+              <Input
+                placeholder="https://indiankanoon.org/doc/... or text brief"
+                value={learnContent}
+                onChange={(e) => setLearnContent(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={submittingLearn} className="bg-[#0A1628] text-white text-xs font-semibold">
+                Assign Item
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
