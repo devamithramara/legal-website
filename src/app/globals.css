@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: #0B132B; /* Dark midnight navy base */
-    --foreground: #F8FAFC;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
     
-    --card: #1C2541;
-    --card-foreground: #F8FAFC;
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
     
-    --popover: #1C2541;
-    --popover-foreground: #F8FAFC;
+    --popover: 222 47% 15%;
+    --popover-foreground: 210 40% 98%;
     
-    --primary: #E2C044; /* Vivid Gold */
-    --primary-foreground: #0B132B;
+    --primary: 48 76% 58%;
+    --primary-foreground: 222 47% 11%;
     
-    --secondary: #3A506B;
-    --secondary-foreground: #F8FAFC;
+    --secondary: 215 30% 32%;
+    --secondary-foreground: 210 40% 98%;
     
-    --muted: #1F293D;
-    --muted-foreground: #94A3B8;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 70%;
     
-    --accent: #E2C044;
-    --accent-foreground: #0B132B;
+    --accent: 48 76% 58%;
+    --accent-foreground: 222 47% 11%;
     
-    --destructive: #EF4444;
-    --destructive-foreground: #FFFFFF;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
     
-    --border: #2B3A55;
-    --input: #2B3A55;
-    --ring: #E2C044;
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 48 76% 58%;
     
     --radius: 0.75rem;
   }
@@ -48,31 +48,117 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL HIGH-CONTRAST FONT VISIBILITY & FORM CONTROLS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Force all text inputs, textareas, and native selects to high contrast */
+input, select, textarea {
+  color: #0A1628 !important;
+  font-weight: 600 !important;
+}
+
+/* Dark theme containers (Junior workspace, floating widgets, dark cards) */
+.mesh-bg input,
+.mesh-bg select,
+.mesh-bg textarea,
+.bg-slate-900 input,
+.bg-slate-900 select,
+.bg-slate-900 textarea,
+.bg-slate-950 input,
+.bg-slate-950 select,
+.bg-slate-950 textarea,
+.glass-panel input,
+.glass-panel select,
+.glass-panel textarea,
+.glass-card input,
+.glass-card select,
+.glass-card textarea {
+  color: #FFFFFF !important;
+  background-color: #0F172A !important;
+  border-color: #334155 !important;
+}
+
+/* Admin light containers (White cards, #F5F0E8 background) */
+.bg-white input,
+.bg-white select,
+.bg-white textarea,
+.bg-\[\#F5F0E8\] input,
+.bg-\[\#F5F0E8\] select,
+.bg-\[\#F5F0E8\] textarea {
+  color: #0A1628 !important;
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Native select option tags contrast fix */
+option {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+.bg-white option,
+select.bg-white option {
+  background-color: #FFFFFF !important;
+  color: #0A1628 !important;
+  font-weight: 600 !important;
+}
+
+/* Date/time pickers native calendar styling */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+.bg-white input[type="date"],
+.bg-white input[type="datetime-local"],
+.bg-white input[type="time"] {
+  color-scheme: light;
+}
+
+/* Table text high contrast */
+table th {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+.bg-white table td,
+.bg-white table th {
+  color: #0A1628 !important;
+}
+
+.mesh-bg table td,
+.bg-slate-900 table td {
+  color: #F8FAFC !important;
+}
+
 /* Glassmorphism & Custom Aesthetic Classes */
 .glass-panel {
-  background: rgba(28, 37, 65, 0.65);
+  background: rgba(28, 37, 65, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 192, 68, 0.18);
+  border: 1px solid rgba(226, 192, 68, 0.25);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 .glass-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(226, 192, 68, 0.5);
+  border-color: rgba(226, 192, 68, 0.6);
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px -10px rgba(226, 192, 68, 0.25);
+  box-shadow: 0 12px 30px -10px rgba(226, 192, 68, 0.3);
 }
 
 .gold-gradient-text {
-  background: linear-gradient(135deg, #FFF3C4 0%, #E2C044 50%, #B8860B 100%);
+  background: linear-gradient(135deg, #FFF3C4 0%, #E2C044 50%, #D4AF37 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
