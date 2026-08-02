@@ -571,6 +571,167 @@ export default function AdminJuniors() {
         </DialogContent>
       </Dialog>
 
+      {/* MODAL: ALLOCATE TASK */}
+      <Dialog open={taskModalOpen} onOpenChange={setTaskModalOpen}>
+        <DialogContent className="bg-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-[#0A1628]">Allocate Task to Junior</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Assign a specific task to a junior advocate for a case.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-700">Assign To *</Label>
+              <select
+                value={taskJuniorId}
+                onChange={(e) => setTaskJuniorId(e.target.value)}
+                className="w-full h-10 px-3 bg-white border border-[#DCD6C5] text-xs rounded-xl font-bold"
+                required
+              >
+                <option value="">Select junior advocate...</option>
+                {juniors.map((j) => (
+                  <option key={j.id} value={j.id}>{j.name} ({j.role})</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-700">Case *</Label>
+              <select
+                value={taskCaseId}
+                onChange={(e) => setTaskCaseId(e.target.value)}
+                className="w-full h-10 px-3 bg-white border border-[#DCD6C5] text-xs rounded-xl font-bold"
+                required
+              >
+                <option value="">Select active case...</option>
+                {cases.map((c) => (
+                  <option key={c.id} value={c.id}>{c.caseNumber} — {c.title}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-700">Task Description *</Label>
+              <Input
+                placeholder="e.g. Draft bail application petition, Research Sec 498A cases..."
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                required
+                className="border-[#DCD6C5] text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-bold text-gray-700">Deadline</Label>
+              <Input
+                type="date"
+                value={taskDeadline}
+                onChange={(e) => setTaskDeadline(e.target.value)}
+                className="border-[#DCD6C5] text-xs"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setTaskModalOpen(false)} className="text-xs border-[#DCD6C5]">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submittingTask} className="bg-[#0A1628] text-white text-xs font-semibold">
+                {submittingTask ? 'Allocating...' : 'Allocate Task'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: ADD MEMBER */}
+      <Dialog open={addModalOpen} onOpenChange={(open) => { setAddModalOpen(open); if (!open) setGeneratedPassword(null); }}>
+        <DialogContent className="bg-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-[#0A1628]">Add Junior Advocate / Intern</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Creates a new account with login credentials. Password will be displayed once.
+            </DialogDescription>
+          </DialogHeader>
+
+          {generatedPassword ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                <p className="font-extrabold text-emerald-800 mb-1">✅ Member added successfully!</p>
+                <p className="text-gray-700">Share these credentials securely with the new member:</p>
+                <div className="mt-3 p-3 bg-white rounded-lg border border-emerald-300 font-mono text-sm">
+                  <p className="font-bold text-[#0A1628]">Password: <span className="text-emerald-700">{generatedPassword}</span></p>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2 italic">This password will not be shown again. Ask them to change it after first login.</p>
+              </div>
+              <Button onClick={() => { setAddModalOpen(false); setGeneratedPassword(null); }} className="w-full bg-[#0A1628] text-white text-xs font-bold">
+                Done
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleAddMember} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 col-span-2">
+                  <Label className="font-bold text-gray-700">Full Name *</Label>
+                  <Input placeholder="e.g. Priya Sharma" value={newName} onChange={(e) => setNewName(e.target.value)} required className="border-[#DCD6C5] text-xs" />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label className="font-bold text-gray-700">Email Address *</Label>
+                  <Input type="email" placeholder="priya@yourlawfirm.in" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="border-[#DCD6C5] text-xs" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold text-gray-700">Phone</Label>
+                  <Input type="tel" placeholder="+91 98765 43210" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="border-[#DCD6C5] text-xs" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold text-gray-700">Role *</Label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as 'JUNIOR' | 'INTERN')}
+                    className="w-full h-10 px-3 bg-white border border-[#DCD6C5] text-xs rounded-xl font-bold"
+                  >
+                    <option value="JUNIOR">Junior Advocate</option>
+                    <option value="INTERN">Intern / Trainee</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label className="font-bold text-gray-700">Designation</Label>
+                  <Input placeholder="e.g. Junior Associate, Research Intern" value={newDesignation} onChange={(e) => setNewDesignation(e.target.value)} className="border-[#DCD6C5] text-xs" />
+                </div>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setAddModalOpen(false)} className="text-xs border-[#DCD6C5]">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={submittingAdd} className="bg-[#0A1628] text-white text-xs font-semibold">
+                  {submittingAdd ? 'Adding...' : `Add ${newRole === 'INTERN' ? 'Intern' : 'Junior'}`}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: REMOVE CONFIRMATION */}
+      <Dialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+        <DialogContent className="bg-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-rose-700">Remove Team Member</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              This will permanently remove <span className="font-bold text-[#0A1628]">{removeTarget?.name}</span> and unassign them from all cases. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2 gap-2">
+            <Button variant="outline" onClick={() => setRemoveTarget(null)} className="text-xs border-[#DCD6C5]">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRemove}
+              disabled={!!removingId}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+            >
+              {removingId ? 'Removing...' : 'Yes, Remove Member'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

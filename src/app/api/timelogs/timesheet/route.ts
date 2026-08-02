@@ -15,14 +15,17 @@ export async function GET(req: Request) {
     const juniorIdParam = searchParams.get('juniorId');
     const targetJuniorId = (session.user.role === Role.ADMIN && juniorIdParam) ? juniorIdParam : session.user.id;
 
-    // Fetch time logs for past 7 days
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Fetch time logs for past 30 days (weekly timesheet cycle)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const pendingOnly = searchParams.get('pendingOnly') === 'true';
 
     const logs = await prisma.timeLog.findMany({
       where: {
         juniorId: targetJuniorId,
-        startTime: { gte: sevenDaysAgo },
+        startTime: { gte: thirtyDaysAgo },
+        ...(pendingOnly ? { approved: false } : {}),
       },
       include: {
         task: { select: { title: true, case: { select: { caseNumber: true } } } },

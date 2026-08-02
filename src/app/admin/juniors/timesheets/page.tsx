@@ -17,14 +17,20 @@ export default function AdminTimesheetsPage() {
   const fetchJuniorsAndLogs = async (juniorId?: string) => {
     try {
       const juniorsRes = await fetch('/api/juniors');
+      let firstId = juniorId;
+
       if (juniorsRes.ok) {
         const jData = await juniorsRes.json();
         setJuniors(jData);
+        // Use the first junior's ID if none passed in
+        if (!firstId && jData.length > 0) {
+          firstId = jData[0].id as string;
+          setSelectedJuniorId(jData[0].id as string);
+        }
       }
 
-      const targetId = juniorId || (juniors.length > 0 ? juniors[0].id : '');
-      if (targetId) {
-        const timesheetRes = await fetch(`/api/timelogs/timesheet?juniorId=${targetId}`);
+      if (firstId) {
+        const timesheetRes = await fetch(`/api/timelogs/timesheet?juniorId=${firstId}`);
         if (timesheetRes.ok) {
           const tData = await timesheetRes.json();
           if (tData.logs) setLogs(tData.logs);
