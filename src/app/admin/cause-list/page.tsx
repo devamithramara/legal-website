@@ -176,7 +176,7 @@ export default function CauseListPage() {
           <h1 className="text-2xl font-bold font-heading text-[#0A1628] flex items-center gap-2">
             <Gavel className="h-6 w-6 text-[#C9A84C]" /> Cause List & Hearing Manager
           </h1>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-600 font-medium">
             Update hearing dates, sync FullCalendar & timeline, and trigger 24h prior Twilio client notifications
           </p>
         </div>
@@ -256,12 +256,12 @@ export default function CauseListPage() {
                     Select Active Case Folder *
                   </Label>
                   <Select value={selectedCaseId} onValueChange={(val) => setSelectedCaseId(val || '')}>
-                    <SelectTrigger className="border-[#DCD6C5] text-xs bg-white">
-                      <SelectValue placeholder="Choose case number..." />
+                    <SelectTrigger className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold shadow-sm h-10">
+                      <SelectValue placeholder="Choose case number..." className="text-slate-500 font-medium" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white text-xs">
+                    <SelectContent className="bg-white text-xs text-[#0A1628] border-slate-300 shadow-xl">
                       {activeCases.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                        <SelectItem key={c.id} value={c.id} className="text-xs text-[#0A1628] font-semibold hover:bg-amber-50">
                           {c.caseNumber} - {c.title} ({c.client?.name})
                         </SelectItem>
                       ))}
@@ -279,7 +279,8 @@ export default function CauseListPage() {
                     type="datetime-local"
                     value={nextHearingDate}
                     onChange={(e) => setNextHearingDate(e.target.value)}
-                    className="border-[#DCD6C5] text-xs bg-white"
+                    className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold h-10 shadow-sm placeholder:text-slate-400"
+                    style={{ colorScheme: 'light' }}
                     required
                   />
                 </div>
@@ -294,7 +295,7 @@ export default function CauseListPage() {
                     placeholder="e.g. High Court Bench 4, District Court Room 102"
                     value={courtName}
                     onChange={(e) => setCourtName(e.target.value)}
-                    className="border-[#DCD6C5] text-xs bg-white"
+                    className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold h-10 shadow-sm placeholder:text-slate-400"
                     required
                   />
                 </div>
@@ -313,7 +314,7 @@ export default function CauseListPage() {
                         className={`py-1.5 px-2 rounded text-[10px] font-bold border transition ${
                           hearingNotes === preset
                             ? 'bg-[#0A1628] text-[#C9A84C] border-[#C9A84C]'
-                            : 'bg-gray-50 border-[#DCD6C5] text-gray-700 hover:border-gray-400'
+                            : 'bg-slate-100 border-slate-300 text-[#0A1628] hover:bg-slate-200'
                         }`}
                       >
                         {preset}
@@ -325,15 +326,15 @@ export default function CauseListPage() {
                     placeholder="Or type custom remarks..."
                     value={hearingNotes}
                     onChange={(e) => setHearingNotes(e.target.value)}
-                    className="border-[#DCD6C5] text-xs bg-white"
+                    className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold h-10 shadow-sm placeholder:text-slate-400"
                   />
                 </div>
 
                 {/* 5. SMS Toggle */}
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-lg flex items-center justify-between">
                   <div className="space-y-0.5">
                     <p className="font-bold text-[#0A1628] text-xs">Twilio Client SMS</p>
-                    <p className="text-[10px] text-gray-600">Dispatches 24h prior hearing reminder to client phone</p>
+                    <p className="text-[10px] text-gray-700 font-medium">Dispatches 24h prior hearing reminder to client phone</p>
                   </div>
                   <input
                     type="checkbox"
@@ -349,7 +350,7 @@ export default function CauseListPage() {
                 <Button
                   type="submit"
                   disabled={submitting || !selectedCaseId || !nextHearingDate}
-                  className="bg-[#0A1628] text-[#F5F0E8] hover:bg-[#0A1628]/90 font-bold text-xs px-6 py-2.5 flex items-center gap-2"
+                  className="bg-[#0A1628] text-[#F5F0E8] hover:bg-[#0A1628]/90 font-bold text-xs px-6 py-2.5 flex items-center gap-2 shadow-md"
                 >
                   {submitting ? (
                     <>
@@ -373,17 +374,17 @@ export default function CauseListPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <h3 className="text-base font-bold font-heading text-[#0A1628]">Upcoming Cause List</h3>
-                <p className="text-xs text-gray-500">Active hearings scheduled for court appearance</p>
+                <p className="text-xs text-gray-600 font-medium">Active hearings scheduled for court appearance</p>
               </div>
 
               {/* Search Bar */}
               <div className="relative w-full sm:w-64">
-                <Search className="h-3.5 w-3.5 absolute left-3 top-3 text-gray-400" />
+                <Search className="h-3.5 w-3.5 absolute left-3 top-3 text-slate-500" />
                 <Input
                   placeholder="Search case, court, or client..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 text-xs border-[#DCD6C5] bg-white"
+                  className="pl-8 text-xs border-slate-300 bg-white text-[#0A1628] font-semibold placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -393,14 +394,14 @@ export default function CauseListPage() {
                 <div className="h-7 w-7 border-3 border-[#0A1628] border-t-[#C9A84C] rounded-full animate-spin" />
               </div>
             ) : filteredCases.length === 0 ? (
-              <div className="text-center py-12 border border-dashed border-gray-200 rounded-xl text-xs text-gray-400 font-semibold">
+              <div className="text-center py-12 border border-dashed border-slate-300 rounded-xl text-xs text-slate-500 font-semibold">
                 No active cause list entries found.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="border-b border-slate-200 bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                       <th className="py-2.5 px-3">Case Number</th>
                       <th className="py-2.5 px-3">Client</th>
                       <th className="py-2.5 px-3">Court / Bench</th>
@@ -408,7 +409,7 @@ export default function CauseListPage() {
                       <th className="py-2.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-slate-100">
                     {filteredCases.map((c) => {
                       const hearingFormatted = c.nextHearing
                         ? new Date(c.nextHearing).toLocaleString('en-IN', {
@@ -421,25 +422,25 @@ export default function CauseListPage() {
                         : 'Not Scheduled';
 
                       return (
-                        <tr key={c.id} className="hover:bg-amber-50/40 transition">
+                        <tr key={c.id} className="hover:bg-amber-50/50 transition">
                           <td className="py-3 px-3">
                             <span className="font-bold text-[#0A1628]">{c.caseNumber}</span>
-                            <p className="text-[10px] text-gray-500 truncate max-w-[140px]">{c.title}</p>
+                            <p className="text-[10px] text-slate-600 truncate max-w-[140px]">{c.title}</p>
                           </td>
                           <td className="py-3 px-3">
-                            <span className="font-semibold text-gray-800">{c.client?.name}</span>
-                            <p className="text-[10px] text-gray-400">{c.client?.phone || 'No phone'}</p>
+                            <span className="font-bold text-[#0A1628]">{c.client?.name}</span>
+                            <p className="text-[10px] text-slate-500">{c.client?.phone || 'No phone'}</p>
                           </td>
-                          <td className="py-3 px-3 font-medium text-gray-700">
+                          <td className="py-3 px-3 font-semibold text-slate-800">
                             {c.court || 'High Court'}
                           </td>
-                          <td className="py-3 px-3 font-semibold">
+                          <td className="py-3 px-3 font-bold">
                             {c.nextHearing ? (
-                              <span className="inline-flex items-center gap-1 text-rose-600 font-bold">
-                                <Clock className="h-3 w-3" /> {hearingFormatted}
+                              <span className="inline-flex items-center gap-1 text-rose-700 font-extrabold">
+                                <Clock className="h-3 w-3 text-rose-600" /> {hearingFormatted}
                               </span>
                             ) : (
-                              <span className="text-gray-400">Pending Date</span>
+                              <span className="text-slate-400 font-medium">Pending Date</span>
                             )}
                           </td>
                           <td className="py-3 px-3 text-right">
@@ -451,7 +452,7 @@ export default function CauseListPage() {
                                 setCourtName(c.court || 'High Court Bench');
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                               }}
-                              className="border-[#DCD6C5] text-[10px] py-1 px-2 text-[#0A1628] hover:border-[#C9A84C] font-semibold"
+                              className="border-slate-300 text-[10px] py-1 px-2.5 text-[#0A1628] hover:border-[#C9A84C] font-bold bg-white"
                             >
                               Update Date
                             </Button>

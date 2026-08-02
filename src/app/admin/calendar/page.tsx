@@ -297,49 +297,50 @@ export default function AdminCalendar() {
             <div className="space-y-1.5">
               <Label htmlFor="hCase" className="text-xs font-bold text-gray-600">Select Case File</Label>
               <Select value={selectedCaseId} onValueChange={(val) => setSelectedCaseId(val || '')}>
-                <SelectTrigger className="border-[#DCD6C5] text-xs bg-white">
-                  <SelectValue placeholder="Case Folder" />
+                <SelectTrigger className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold shadow-sm">
+                  <SelectValue placeholder="Case Folder" className="text-slate-500 font-medium" />
                 </SelectTrigger>
-                <SelectContent className="bg-white text-xs">
+                <SelectContent className="bg-white text-xs text-[#0A1628]">
                   {cases.map((c) => (
-                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.caseNumber} - {c.title}</SelectItem>
+                    <SelectItem key={c.id} value={c.id} className="text-xs text-[#0A1628] font-semibold">{c.caseNumber} - {c.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="hTitle" className="text-xs font-bold text-gray-600">Hearing Brief Title</Label>
+              <Label htmlFor="hTitle" className="text-xs font-bold text-gray-700">Hearing Brief Title</Label>
               <Input 
                 id="hTitle" 
                 placeholder="e.g. Interim Bail Argument" 
                 value={hearingTitle} 
                 onChange={(e) => setHearingTitle(e.target.value)} 
-                className="border-[#DCD6C5] text-xs bg-white"
+                className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="hDate" className="text-xs font-bold text-gray-600">Hearing Date & Time</Label>
+              <Label htmlFor="hDate" className="text-xs font-bold text-gray-700">Hearing Date & Time</Label>
               <Input 
                 id="hDate" 
                 type="datetime-local" 
                 value={hearingDate} 
                 onChange={(e) => setHearingDate(e.target.value)} 
-                className="border-[#DCD6C5] text-xs bg-white"
+                className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold"
+                style={{ colorScheme: 'light' }}
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="hNotes" className="text-xs font-bold text-gray-600">Courtroom Remarks (Optional)</Label>
+              <Label htmlFor="hNotes" className="text-xs font-bold text-gray-700">Courtroom Remarks (Optional)</Label>
               <Input 
                 id="hNotes" 
                 placeholder="Room number, judge bench details..." 
                 value={hearingNotes} 
                 onChange={(e) => setHearingNotes(e.target.value)} 
-                className="border-[#DCD6C5] text-xs bg-white"
+                className="border-slate-300 text-xs bg-white text-[#0A1628] font-bold"
               />
             </div>
 
