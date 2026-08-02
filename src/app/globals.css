@@ -2,26 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #F5F0E8; /* Off-white background */
+    --foreground: #0A1628; /* Deep navy body text */
+    
+    --card: #FFFFFF;
+    --card-foreground: #0A1628;
+    
+    --popover: #FFFFFF;
+    --popover-foreground: #0A1628;
+    
+    --primary: #0A1628; /* Deep navy primary */
+    --primary-foreground: #F5F0E8;
+    
+    --secondary: #E5DFC9;
+    --secondary-foreground: #0A1628;
+    
+    --muted: #EAE5D9;
+    --muted-foreground: #5A6275;
+    
+    --accent: #C9A84C; /* Gold accent */
+    --accent-foreground: #0A1628;
+    
+    --destructive: #991B1B;
+    --destructive-foreground: #F9FAFB;
+    
+    --border: #DCD6C5;
+    --input: #DCD6C5;
+    --ring: #C9A84C;
+    
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: #060D18; /* Dark navy */
+    --foreground: #F5F0E8; /* Off-white text */
+    
+    --card: #0A1628; /* Deep navy cards */
+    --card-foreground: #F5F0E8;
+    
+    --popover: #0A1628;
+    --popover-foreground: #F5F0E8;
+    
+    --primary: #C9A84C; /* Gold primary in dark mode */
+    --primary-foreground: #060D18;
+    
+    --secondary: #1E293B;
+    --secondary-foreground: #F5F0E8;
+    
+    --muted: #1E293B;
+    --muted-foreground: #94A3B8;
+    
+    --accent: #C9A84C;
+    --accent-foreground: #060D18;
+    
+    --destructive: #EF4444;
+    --destructive-foreground: #F9FAFB;
+    
+    --border: #1E293B;
+    --input: #1E293B;
+    --ring: #C9A84C;
   }
 }
 
-body {
-  color: var(--foreground);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight;
+  }
+}
+
+/* Custom scrollbar matching navy & gold */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
 }
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }

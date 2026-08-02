@@ -1,0 +1,215 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  JUNIOR
+  INTERN
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum CaseStatus {
+  INTAKE
+  ACTIVE
+  ARGUED
+  JUDGMENT
+  CLOSED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum InvoiceStatus {
+  PAID
+  UNPAID
+  OVERDUE
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum RecipientType {
+  CLIENT
+  JUNIOR
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  phone        String?
+  role         Role          @default(CLIENT)
+  designation  String?       // e.g. "Junior Advocate", "Intern"
+  password     String
+  createdAt    DateTime      @default(now())
+  
+  appointments      Appointment[]
+  clientCases       Case[]            @relation("ClientCases")
+  juniorCases       Case[]            @relation("JuniorCases")
+  juniorTasks       Task[]            @relation("JuniorTasks")
+  documents         Document[]
+  invoices          Invoice[]
+  testimonials      Testimonial[]
+  hearingReminders  HearingReminder[]
+}
+
+model Appointment {
+  id            String            @id @default(uuid())
+  clientId      String
+  client        User              @relation(fields: [clientId], references: [id])
+  date          DateTime
+  timeSlot      String
+  caseType      String
+  status        AppointmentStatus @default(PENDING)
+  paymentId     String?
+  feePaid       Float
+  notes         String?
+  createdAt     DateTime          @default(now())
+  
+  documents     Document[]
+}
+
+model Case {
+  id          String      @id @default(uuid())
+  clientId    String
+  client      User        @relation("ClientCases", fields: [clientId], references: [id])
+  assignedTo  String?
+  junior      User?       @relation("JuniorCases", fields: [assignedTo], references: [id])
+  caseNumber  String      @unique
+  title       String
+  type        String
+  status      CaseStatus  @default(INTAKE)
+  nextHearing DateTime?
+  court       String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  events           CaseEvent[]
+  documents        Document[]
+  tasks            Task[]
+  hearingReminders HearingReminder[]
+}
+
+model CaseEvent {
+  id        String   @id @default(uuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  eventDate DateTime
+  title     String
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id            String       @id @default(uuid())
+  uploadedById  String
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  caseId        String?
+  case          Case?        @relation(fields: [caseId], references: [id])
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  name          String
+  url           String
+  type          String       // e.g., ID Proof, Contract, Court Notice, Other
+  createdAt     DateTime     @default(now())
+}
+
+model Invoice {
+  id        String        @id @default(uuid())
+  clientId  String
+  client    User          @relation(fields: [clientId], references: [id])
+  amount    Float
+  gstNumber String?
+  status    InvoiceStatus @default(UNPAID)
+  pdfUrl    String?
+  createdAt DateTime      @default(now())
+  dueDate   DateTime?
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Float
+  category    String   // Rent, Salary, Office Supplies, Marketing, Other
+  date        DateTime @default(now())
+  description String?
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  type        String   // INFLOW, OUTFLOW
+  amount      Float
+  category    String
+  date        DateTime @default(now())
+  referenceId String?
+  description String?
+}
+
+model Task {
+  id            String     @id @default(uuid())
+  caseId        String
+  case          Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignedTo    String?
+  junior        User?      @relation("JuniorTasks", fields: [assignedTo], references: [id])
+  title         String
+  status        TaskStatus @default(TODO)
+  deadline      DateTime?
+  billableHours Float      @default(0)
+  createdAt     DateTime   @default(now())
+}
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  clientId  String
+  client    User     @relation(fields: [clientId], references: [id])
+  rating    Int
+  body      String
+  caseType  String
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model HearingReminder {
+  id            String         @id @default(uuid())
+  caseId        String
+  case          Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  recipientId   String
+  recipient     User           @relation(fields: [recipientId], references: [id])
+  recipientType RecipientType
+  channel       String         @default("SMS")
+  message       String
+  sentAt        DateTime?
+  status        ReminderStatus @default(PENDING)
+  scheduledFor  DateTime?
+  createdAt     DateTime       @default(now())
+}
+
+model ReminderSetting {
+  id                String   @id @default(uuid())
+  daysBeforeHearing Int      @default(1)
+  morningOfHearing  Boolean  @default(true)
+  customMessage     String?
+  updatedAt         DateTime @updatedAt
+}
+
