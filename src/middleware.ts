@@ -6,8 +6,11 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // JUNIOR attempt on /admin -> redirect to /junior/dashboard
+    // SENIOR attempt on /admin or /junior -> redirect to /senior/dashboard
     if (path.startsWith('/admin')) {
+      if (token?.role === 'SENIOR') {
+        return NextResponse.redirect(new URL('/senior/dashboard', req.url));
+      }
       if (token?.role === 'JUNIOR' || token?.role === 'INTERN') {
         return NextResponse.redirect(new URL('/junior/dashboard', req.url));
       }
@@ -16,8 +19,19 @@ export default withAuth(
       }
     }
 
-    if (path.startsWith('/junior') && token?.role !== 'JUNIOR' && token?.role !== 'INTERN' && token?.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/login', req.url));
+    if (path.startsWith('/junior')) {
+      if (token?.role === 'SENIOR') {
+        return NextResponse.redirect(new URL('/senior/dashboard', req.url));
+      }
+      if (token?.role !== 'JUNIOR' && token?.role !== 'INTERN' && token?.role !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/login', req.url));
+      }
+    }
+
+    if (path.startsWith('/senior')) {
+      if (token?.role !== 'SENIOR' && token?.role !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/login', req.url));
+      }
     }
 
     if (path.startsWith('/dashboard') && token?.role !== 'CLIENT') {
@@ -34,5 +48,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ['/admin/:path*', '/junior/:path*', '/dashboard/:path*'],
+  matcher: ['/admin/:path*', '/junior/:path*', '/senior/:path*', '/dashboard/:path*'],
 };

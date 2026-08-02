@@ -7,6 +7,18 @@
     {
       "path": "/api/cron/log-reminder",
       "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/cron/senior-morning",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/checklist-remind",
+      "schedule": "30 12 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-summary",
+      "schedule": "30 3 * * 1"
     }
   ]
 }

@@ -14,6 +14,7 @@ enum Role {
   CLIENT
   JUNIOR
   INTERN
+  SENIOR
   ADMIN
 }
 
@@ -60,29 +61,42 @@ model User {
   email        String   @unique
   phone        String?
   role         Role     @default(CLIENT)
-  designation  String?  // e.g. "Junior Advocate", "Intern"
+  designation  String?  // e.g. "Senior Advocate", "Junior Advocate", "Intern"
   password     String
   createdAt    DateTime @default(now())
 
-  appointments      Appointment[]
-  clientCases       Case[]            @relation("ClientCases")
-  juniorCases       Case[]            @relation("JuniorCases")
-  juniorTasks       Task[]            @relation("JuniorTasks")
-  seniorTasks       Task[]            @relation("SeniorTasks")
-  documents         Document[]
-  invoices          Invoice[]
-  testimonials      Testimonial[]
-  hearingReminders  HearingReminder[]
-  timeLogs          TimeLog[]
-  dailyLogs         DailyLog[]
-  appearances       Appearance[]
-  drafts            Draft[]
-  researchLogs      ResearchLog[]
-  clientCallLogs    ClientCallLog[]
-  escalationsRaised Escalation[]      @relation("EscalationRaisedBy")
-  learningItems     LearningItem[]    @relation("LearningJunior")
-  assignedLearning  LearningItem[]    @relation("LearningAssignedBy")
-  skillTags         SkillTag[]        @relation("JuniorSkillTags")
+  appointments        Appointment[]
+  clientCases         Case[]               @relation("ClientCases")
+  juniorCases         Case[]               @relation("JuniorCases")
+  seniorCases         Case[]               @relation("SeniorCases")
+  juniorTasks         Task[]               @relation("JuniorTasks")
+  seniorTasks         Task[]               @relation("SeniorTasks")
+  documents           Document[]
+  invoices            Invoice[]
+  testimonials        Testimonial[]
+  hearingReminders    HearingReminder[]
+  timeLogs            TimeLog[]
+  dailyLogs           DailyLog[]
+  appearances         Appearance[]
+  drafts              Draft[]
+  researchLogs        ResearchLog[]
+  clientCallLogs      ClientCallLog[]
+  escalationsRaised   Escalation[]         @relation("EscalationRaisedBy")
+  learningItems       LearningItem[]       @relation("LearningJunior")
+  assignedLearning    LearningItem[]       @relation("LearningAssignedBy")
+  skillTags           SkillTag[]           @relation("JuniorSkillTags")
+  strategies          CaseStrategy[]
+  opponentProfiles    OpponentProfile[]
+  judgeProfiles       JudgeProfile[]
+  checklists          HearingChecklist[]
+  postHearingNotes    PostHearingNote[]
+  seniorDrafts        SeniorDraft[]
+  precedentVaultItems PrecedentVault[]
+  judgments           JudgmentLibrary[]
+  crossExams          CrossExamBuilder[]
+  clientBriefs        ClientBriefingNote[]
+  caseOutcomes        CaseOutcome[]
+  seniorNotifications SeniorNotification[]
 }
 
 model Appointment {
@@ -107,6 +121,8 @@ model Case {
   client      User       @relation("ClientCases", fields: [clientId], references: [id])
   assignedTo  String?
   junior      User?      @relation("JuniorCases", fields: [assignedTo], references: [id])
+  seniorId    String?
+  senior      User?      @relation("SeniorCases", fields: [seniorId], references: [id])
   caseNumber  String     @unique
   title       String
   type        String
@@ -125,6 +141,14 @@ model Case {
   researchLogs     ResearchLog[]
   clientCallLogs   ClientCallLog[]
   escalations      Escalation[]
+  strategy         CaseStrategy?
+  opponentProfiles OpponentProfile[]
+  checklist        HearingChecklist?
+  postHearingNotes PostHearingNote[]
+  seniorDrafts     SeniorDraft[]
+  crossExams       CrossExamBuilder[]
+  clientBrief      ClientBriefingNote?
+  caseOutcome      CaseOutcome?
 }
 
 model CaseEvent {
@@ -341,6 +365,192 @@ model SkillTag {
   junior    User     @relation("JuniorSkillTags", fields: [juniorId], references: [id])
   tag       String   // CRIMINAL | CIVIL | PROPERTY | FAMILY | CORPORATE | RESEARCH
   addedBy   String
+  createdAt DateTime @default(now())
+}
+
+// ─── SENIOR ADVOCATE WORKSPACE MODELS ──────────────────────────────────────────
+
+model CaseStrategy {
+  id             String   @id @default(uuid())
+  caseId         String   @unique
+  case           Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId       String
+  senior         User     @relation(fields: [seniorId], references: [id])
+  theory         String   // theory of the case
+  keyArguments   String[]
+  weakPoints     String[]
+  counterArgs    String[]
+  caseStrength   String   @default("MODERATE") // STRONG | MODERATE | WEAK | UNCERTAIN
+  strengthReason String?
+  sharedWith     String[] // junior user IDs who can view
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+}
+
+model OpponentProfile {
+  id            String   @id @default(uuid())
+  caseId        String
+  case          Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId      String
+  senior        User     @relation(fields: [seniorId], references: [id])
+  advocateName  String
+  firmName      String?
+  behaviorNotes String?  // e.g. "tends to file last-minute applications"
+  winCount      Int      @default(0)
+  lossCount     Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model JudgeProfile {
+  id        String   @id @default(uuid())
+  seniorId  String
+  senior    User     @relation(fields: [seniorId], references: [id])
+  judgeName String
+  court     String
+  notes     String?  // preferences, typical behavior
+  createdAt DateTime @default(now())
+}
+
+model HearingChecklist {
+  id               String   @id @default(uuid())
+  caseId           String   @unique
+  case             Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId         String
+  senior           User     @relation(fields: [seniorId], references: [id])
+  documentsReady   Boolean  @default(false)
+  argumentsDrafted Boolean  @default(false)
+  clientBriefed    Boolean  @default(false)
+  juniorBriefed    Boolean  @default(false)
+  vakalatnama      Boolean  @default(false)
+  feeCollected     Boolean  @default(false)
+  completionPct    Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt
+}
+
+model PostHearingNote {
+  id                String   @id @default(uuid())
+  caseId            String
+  case              Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId          String
+  senior            User     @relation(fields: [seniorId], references: [id])
+  hearingDate       DateTime
+  argued            String   // what was argued
+  judgeObservations String?
+  orderPassed       String?
+  orderFileUrl      String?  // scanned order Cloudinary URL
+  nextSteps         String[]
+  notifyClient      Boolean  @default(false)
+  createdAt         DateTime @default(now())
+}
+
+model SeniorDraft {
+  id        String   @id @default(uuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId  String
+  senior    User     @relation(fields: [seniorId], references: [id])
+  title     String
+  type      String   @default("PETITION") // PETITION | AFFIDAVIT | NOTICE | ARGUMENT | OTHER
+  content   String   // Rich text / JSON content
+  status    String   @default("DRAFTING") // DRAFTING | SENT_TO_JUNIOR | FILED
+  exportUrl String?  // PDF/DOCX Cloudinary URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model PrecedentVault {
+  id         String   @id @default(uuid())
+  seniorId   String
+  senior     User     @relation(fields: [seniorId], references: [id])
+  title      String
+  type       String   @default("ARGUMENT") // ARGUMENT | CITATION | CLAUSE | TEMPLATE
+  content    String
+  lawArea    String   @default("CRIMINAL") // CRIMINAL | CIVIL | FAMILY | CORPORATE | PROPERTY
+  court      String?
+  year       Int?
+  tags       String[]
+  isShared   Boolean  @default(false) // visible to all firm members
+  sharedWith String[] // specific junior/senior IDs
+  createdAt  DateTime @default(now())
+}
+
+model JudgmentLibrary {
+  id         String   @id @default(uuid())
+  seniorId   String
+  senior     User     @relation(fields: [seniorId], references: [id])
+  title      String
+  court      String
+  year       Int
+  lawArea    String   @default("CRIMINAL")
+  fileUrl    String   // Cloudinary PDF URL
+  highlights String[] // key paragraph annotations
+  tags       String[]
+  isShared   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model CrossExamBuilder {
+  id          String              @id @default(uuid())
+  caseId      String
+  case        Case                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId    String
+  senior      User                @relation(fields: [seniorId], references: [id])
+  witnessName String
+  witnessRole String              @default("PW1") // PW1 | DW2 | Expert
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @default(now()) @updatedAt
+  questions   CrossExamQuestion[]
+}
+
+model CrossExamQuestion {
+  id             String           @id @default(uuid())
+  builderId      String
+  builder        CrossExamBuilder @relation(fields: [builderId], references: [id], onDelete: Cascade)
+  order          Int              @default(1)
+  theme          String           @default("GENERAL")
+  question       String
+  expectedAnswer String?
+  followUp       String?
+  isTrap         Boolean          @default(false)
+}
+
+model ClientBriefingNote {
+  id           String   @id @default(uuid())
+  caseId       String   @unique
+  case         Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId     String
+  senior       User     @relation(fields: [seniorId], references: [id])
+  privateNotes String
+  clientFlags  String[] // VIP | MEDIA_RISK | PAYMENT_RISK | SENSITIVE
+  reminders    String[] // "Call before every hearing"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+}
+
+model CaseOutcome {
+  id       String   @id @default(uuid())
+  caseId   String   @unique
+  case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  seniorId String
+  senior   User     @relation(fields: [seniorId], references: [id])
+  outcome  String   // WON | LOST | SETTLED | WITHDRAWN | COMPROMISED
+  court    String
+  lawArea  String
+  duration Int      // days from filing to closure
+  notes    String?
+  closedAt DateTime @default(now())
+}
+
+model SeniorNotification {
+  id        String   @id @default(uuid())
+  seniorId  String
+  senior    User     @relation(fields: [seniorId], references: [id])
+  type      String   @default("DIGEST") // ESCALATION | PAYMENT | CHECKLIST | FILING | DIGEST
+  title     String
+  body      String
+  caseId    String?
+  read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 

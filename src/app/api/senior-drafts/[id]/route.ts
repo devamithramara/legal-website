@@ -13,20 +13,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { summary, status } = await req.json();
+    const { content } = await req.json();
 
-    if (!['REVIEWED', 'REDO'].includes(status)) {
-      return NextResponse.json({ error: 'Invalid status. Must be REVIEWED or REDO.' }, { status: 400 });
-    }
-
-    const updated = await prisma.learningItem.update({
-      where: { id: params.id },
-      data: { summary: summary || undefined, status },
+    const draft = await prisma.seniorDraft.update({
+      where: { id: params.id, seniorId: session.user.id },
+      data: { content: content || '' },
     });
 
-    return NextResponse.json({ success: true, item: updated });
+    return NextResponse.json({ success: true, draft });
   } catch (error: any) {
-    console.error('[Learning Summary Review Error]', error);
+    console.error('[Senior Draft PATCH Error]', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

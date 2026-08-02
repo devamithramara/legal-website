@@ -3,9 +3,9 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function PATCH(
+export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { caseId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,16 +13,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { approved } = await req.json();
-
-    const updated = await prisma.researchLog.update({
-      where: { id: params.id },
-      data: { approved: Boolean(approved) },
+    const caseId = params.caseId;
+    const strategy = await prisma.caseStrategy.findUnique({
+      where: { caseId },
+      include: {
+        case: { select: { caseNumber: true, title: true, court: true } },
+      },
     });
 
-    return NextResponse.json({ success: true, research: updated });
+    const opponentProfiles = await prisma.opponentProfile.findMany({ where: { caseId } });
+
+    return NextResponse.json({ success: true, strategy, opponentProfiles });
   } catch (error: any) {
-    console.error('[Research Approve Error]', error);
+    console.error('[Case Strategy GET Error]', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
