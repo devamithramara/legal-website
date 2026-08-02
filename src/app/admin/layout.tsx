@@ -17,11 +17,13 @@ import {
   LogOut,
   UserCheck,
   FolderOpen,
-  Bell
+  Bell,
+  Gavel
 } from 'lucide-react';
 
 const ADMIN_LINKS = [
   { label: 'Overview', href: '/admin', icon: Home },
+  { label: 'Cause List', href: '/admin/cause-list', icon: Gavel },
   { label: 'Clients', href: '/admin/clients', icon: Users },
   { label: 'Cases', href: '/admin/cases', icon: Briefcase },
   { label: 'Files', href: '/admin/files', icon: FolderOpen },

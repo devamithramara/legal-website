@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -225,12 +226,19 @@ export default function AdminCalendar() {
           <h2 className="text-2xl font-bold font-heading text-[#0A1628]">Firm Calendar</h2>
           <p className="text-xs text-gray-500 font-medium">Verify hearings, scheduled consultation slots, and active procedural deadlines</p>
         </div>
-        <Button 
-          onClick={() => setAddHearingOpen(true)}
-          className="bg-[#0A1628] hover:bg-[#0A1628]/95 text-white text-xs font-semibold px-4 flex items-center gap-1.5 self-start"
-        >
-          <Plus className="h-4 w-4" /> Add Hearing Date
-        </Button>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/cause-list">
+            <Button variant="outline" className="border-[#DCD6C5] text-[#0A1628] hover:border-[#C9A84C] text-xs font-semibold px-4 flex items-center gap-1.5 bg-white">
+              <CalendarIcon className="h-4 w-4 text-[#C9A84C]" /> Cause List Manager
+            </Button>
+          </Link>
+          <Button 
+            onClick={() => setAddHearingOpen(true)}
+            className="bg-[#0A1628] hover:bg-[#0A1628]/95 text-white text-xs font-semibold px-4 flex items-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Add Hearing Date
+          </Button>
+        </div>
       </div>
 
       {/* Calendar Legends Info */}
