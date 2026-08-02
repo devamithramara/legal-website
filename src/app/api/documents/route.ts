@@ -18,7 +18,12 @@ export async function GET() {
     if (role === Role.ADMIN) {
       // Admin sees all documents
       documents = await prisma.document.findMany({
-        include: {
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          type: true,
+          createdAt: true,
           uploadedBy: { select: { name: true } },
           case: { select: { caseNumber: true, title: true } },
           appointment: { select: { date: true, timeSlot: true } },
@@ -31,7 +36,12 @@ export async function GET() {
         where: {
           case: { assignedTo: id },
         },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          type: true,
+          createdAt: true,
           uploadedBy: { select: { name: true } },
           case: { select: { caseNumber: true, title: true } },
         },
@@ -41,7 +51,12 @@ export async function GET() {
       // Clients see their own documents
       documents = await prisma.document.findMany({
         where: { uploadedById: id },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          type: true,
+          createdAt: true,
           uploadedBy: { select: { name: true } },
           case: { select: { caseNumber: true, title: true } },
         },
@@ -49,7 +64,11 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json(documents);
+    return NextResponse.json(documents, {
+      headers: {
+        'Cache-Control': 'private, max-age=2, stale-while-revalidate=5',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching documents:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

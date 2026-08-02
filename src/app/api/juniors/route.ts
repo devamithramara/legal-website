@@ -62,7 +62,11 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json(formattedJuniors);
+    return NextResponse.json(formattedJuniors, {
+      headers: {
+        'Cache-Control': 'private, max-age=2, stale-while-revalidate=5',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching juniors list:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
