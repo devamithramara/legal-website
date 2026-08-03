@@ -20,7 +20,7 @@ async function withPrismaRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T>
 }
 
 // Get Clients List (Admin & Junior Advocates)
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -28,10 +28,49 @@ export async function GET() {
     }
 
     const { role } = session.user;
-    if (role !== Role.ADMIN && role !== Role.JUNIOR && role !== Role.INTERN) {
+    if (role !== Role.ADMIN && role !== Role.JUNIOR && role !== Role.INTERN && role !== Role.SENIOR) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 403 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const detail = searchParams.get('id'); // ?id=clientId for detail view
+
+    // ── Detail view: single client with nested relations ──────────────────
+    if (detail) {
+      const client = await withPrismaRetry(() =>
+        prisma.user.findUnique({
+          where: { id: detail, role: Role.CLIENT },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            createdAt: true,
+            appointments: {
+              select: { id: true, date: true, status: true, timeSlot: true, caseType: true },
+              orderBy: { date: 'desc' },
+              take: 10,
+            },
+            clientCases: {
+              select: { id: true, caseNumber: true, title: true, court: true, status: true },
+              orderBy: { createdAt: 'desc' },
+              take: 20,
+            },
+            invoices: {
+              select: { id: true, amount: true, status: true, createdAt: true },
+              orderBy: { createdAt: 'desc' },
+              take: 20,
+            },
+          },
+        })
+      );
+      if (!client) return NextResponse.json({ error: 'Client not found.' }, { status: 404 });
+      return NextResponse.json(client, {
+        headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' },
+      });
+    }
+
+    // ── Lean list view: no nested joins ───────────────────────────────────
     const clients = await withPrismaRetry(() =>
       prisma.user.findMany({
         where: { role: Role.CLIENT },
@@ -41,20 +80,9 @@ export async function GET() {
           email: true,
           phone: true,
           createdAt: true,
-          appointments: {
-            select: { id: true, date: true, status: true },
-            orderBy: { date: 'desc' },
-          },
-          clientCases: {
-            select: { id: true, caseNumber: true, title: true, court: true, status: true },
-            orderBy: { createdAt: 'desc' },
-          },
-          invoices: {
-            select: { id: true, amount: true, status: true, createdAt: true },
-            orderBy: { createdAt: 'desc' },
-          },
         },
         orderBy: { name: 'asc' },
+        take: 300,
       })
     );
 

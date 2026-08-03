@@ -11,98 +11,107 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized. Admin only.' }, { status: 403 });
     }
 
-    const allCases = await prisma.case.findMany({
-      include: {
-        client: true,
-      },
-    });
+    // Run all aggregations in parallel — no full table scan, no include:client
+    const [statusGroups, typeGroups, closedCases, recentCases] = await Promise.all([
+      // 1. Status distribution — pure DB groupBy, never loads rows into JS
+      prisma.case.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      // 2. Type/practice area distribution
+      prisma.case.groupBy({
+        by: ['type'],
+        _count: { _all: true },
+      }),
+      // 3. Only closed cases, only fields needed for avg resolution calc
+      prisma.case.findMany({
+        where: { status: CaseStatus.CLOSED },
+        select: { createdAt: true, updatedAt: true },
+      }),
+      // 4. Last 6 months cases — only createdAt + status needed for timeline
+      prisma.case.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().setMonth(new Date().getMonth() - 6)),
+          },
+        },
+        select: { createdAt: true, updatedAt: true, status: true },
+      }),
+    ]);
 
-    // 1. Cases by status counts
+    // Build status counts map
     const statusCounts: Record<string, number> = {
-      INTAKE: 0,
-      ACTIVE: 0,
-      ARGUED: 0,
-      JUDGMENT: 0,
-      CLOSED: 0,
+      INTAKE: 0, ACTIVE: 0, ARGUED: 0, JUDGMENT: 0, CLOSED: 0,
     };
-    allCases.forEach((c) => {
-      statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
+    statusGroups.forEach((g) => {
+      statusCounts[g.status] = g._count._all;
     });
 
-    // 2. Cases by type counts (practice areas)
+    // Build type counts map
     const typeCounts: Record<string, number> = {};
-    allCases.forEach((c) => {
-      typeCounts[c.type] = (typeCounts[c.type] || 0) + 1;
+    typeGroups.forEach((g) => {
+      typeCounts[g.type] = g._count._all;
     });
 
-    // 3. Average resolution time (days) for CLOSED cases
-    const closedCases = allCases.filter((c) => c.status === CaseStatus.CLOSED);
-    let avgResolutionTime = 0;
+    // Average resolution time
+    let avgResolutionTime = 45;
     if (closedCases.length > 0) {
       const totalDays = closedCases.reduce((sum, c) => {
-        const opened = new Date(c.createdAt).getTime();
-        const resolved = new Date(c.updatedAt).getTime();
-        const diffDays = Math.max(1, Math.round((resolved - opened) / (1000 * 60 * 60 * 24)));
-        return sum + diffDays;
+        const diff = Math.max(1, Math.round(
+          (new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime()) / 86400000
+        ));
+        return sum + diff;
       }, 0);
       avgResolutionTime = Math.round(totalDays / closedCases.length);
-    } else {
-      // Mock average if no cases are closed yet to display charts nicely
-      avgResolutionTime = 45; 
     }
 
-    // 4. Opened vs Closed cases line chart (last 6 months)
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date();
+    // Opened vs Closed timeline (last 6 months)
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const now = new Date();
     const openedVsClosed: Record<string, { opened: number; closed: number }> = {};
-
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - i, 1);
-      const label = `${months[d.getMonth()]} ${d.getFullYear().toString().substr(-2)}`;
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = `${months[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
       openedVsClosed[label] = { opened: 0, closed: 0 };
     }
-
-    allCases.forEach((c) => {
-      // Opened
-      const openedDate = new Date(c.createdAt);
-      const openedLabel = `${months[openedDate.getMonth()]} ${openedDate.getFullYear().toString().substr(-2)}`;
-      if (openedVsClosed[openedLabel]) {
-        openedVsClosed[openedLabel].opened += 1;
-      }
-
-      // Closed
+    recentCases.forEach((c) => {
+      const openLabel = `${months[new Date(c.createdAt).getMonth()]} ${String(new Date(c.createdAt).getFullYear()).slice(-2)}`;
+      if (openedVsClosed[openLabel]) openedVsClosed[openLabel].opened += 1;
       if (c.status === CaseStatus.CLOSED) {
-        const closedDate = new Date(c.updatedAt);
-        const closedLabel = `${months[closedDate.getMonth()]} ${closedDate.getFullYear().toString().substr(-2)}`;
-        if (openedVsClosed[closedLabel]) {
-          openedVsClosed[closedLabel].closed += 1;
-        }
+        const closeLabel = `${months[new Date(c.updatedAt).getMonth()]} ${String(new Date(c.updatedAt).getFullYear()).slice(-2)}`;
+        if (openedVsClosed[closeLabel]) openedVsClosed[closeLabel].closed += 1;
       }
     });
 
     const timelineLabels = Object.keys(openedVsClosed);
-    const openedData = timelineLabels.map((l) => openedVsClosed[l].opened);
-    const closedData = timelineLabels.map((l) => openedVsClosed[l].closed);
 
-    // 5. Top 3 practice areas (by count/popularity)
+    // Top 3 practice areas
     const sortedTypes = Object.entries(typeCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([name, count]) => ({ name, count }));
 
-    return NextResponse.json({
-      statusCounts,
-      typeCounts,
-      avgResolutionTime,
-      openedVsClosed: {
-        labels: timelineLabels,
-        opened: openedData,
-        closed: closedData,
+    return NextResponse.json(
+      {
+        statusCounts,
+        typeCounts,
+        avgResolutionTime,
+        openedVsClosed: {
+          labels: timelineLabels,
+          opened: timelineLabels.map((l) => openedVsClosed[l].opened),
+          closed: timelineLabels.map((l) => openedVsClosed[l].closed),
+        },
+        topPracticeAreas: sortedTypes,
+        totalCases: Object.values(statusCounts).reduce((a, b) => a + b, 0),
       },
-      topPracticeAreas: sortedTypes,
-    });
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (error: any) {
-    console.error('Error generating case analytics:', error);
+    console.error('Error fetching case analytics:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -142,88 +142,29 @@ export default function AdminOverview() {
     }
   };
 
+
   const fetchDashboardData = async () => {
     try {
-      const [clientsRes, casesRes, ledgerRes, apptsRes] = await Promise.all([
-        fetch('/api/clients'),
-        fetch('/api/cases'),
-        fetch('/api/finance/ledger'),
-        fetch('/api/appointments'),
-      ]);
+      const res = await fetch('/api/admin/dashboard');
+      if (!res.ok) throw new Error('Failed to load dashboard');
+      const data = await res.json();
 
-      let clientsData = [];
-      let casesData = [];
-      let ledgerData = { summary: { totalRevenue: 0 } };
-      let appointmentsData = [];
-
-      if (clientsRes.ok) clientsData = await clientsRes.json();
-      if (casesRes.ok) casesData = await casesRes.json();
-      if (ledgerRes.ok) ledgerData = await ledgerRes.json();
-      if (apptsRes.ok) appointmentsData = await apptsRes.json();
-
-      setClients(clientsData);
-
-      // Fetch Juniors for case assignment dropdown
-      const juniorsRes = await fetch('/api/juniors');
-      if (juniorsRes.ok) {
-        setJuniors(await juniorsRes.json());
-      }
-
-      // Count metrics
-      const activeCasesCount = casesData.filter((c: any) => c.status !== 'CLOSED').length;
-      
-      const todayStr = new Date().toISOString().split('T')[0];
-      const todayAppts = appointmentsData.filter((a: any) => {
-        const apptDateStr = new Date(a.date).toISOString().split('T')[0];
-        return apptDateStr === todayStr && a.status === 'CONFIRMED';
-      }).length;
-
+      setClients(data.clients || []);
+      setJuniors(data.juniors || []);
       setMetrics({
-        totalClients: clientsData.length,
-        activeCases: activeCasesCount,
-        monthlyRevenue: ledgerData.summary.totalRevenue,
-        appointmentsToday: todayAppts,
+        totalClients: data.metrics.totalClients,
+        activeCases: data.metrics.activeCases,
+        monthlyRevenue: data.metrics.monthlyRevenue,
+        appointmentsToday: data.metrics.appointmentsToday,
       });
-
-      // Construct Unified Activity Feed
-      const activitiesList: ActivityItem[] = [];
-
-      // 1. Map appointments to activities
-      appointmentsData.slice(0, 5).forEach((a: any) => {
-        activitiesList.push({
-          id: `appt_${a.id}`,
-          type: 'appointment',
-          title: 'Consultation Booked',
-          detail: `${a.client?.name || 'Client'} scheduled slot for ${new Date(a.date).toLocaleDateString()} (${a.timeSlot})`,
-          date: a.createdAt,
-        });
-      });
-
-      // 2. Map case events to activities
-      casesData.slice(0, 5).forEach((c: any) => {
-        if (c.events && c.events.length > 0) {
-          c.events.forEach((ev: any) => {
-            activitiesList.push({
-              id: `case_ev_${ev.id}`,
-              type: 'case_event',
-              title: ev.title,
-              detail: `Case #${c.caseNumber}: ${ev.notes || ''}`,
-              date: ev.createdAt,
-            });
-          });
-        }
-      });
-
-      // Sort by date desc
-      activitiesList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setActivities(activitiesList.slice(0, 8));
-
+      setActivities(data.activities || []);
     } catch (err) {
       console.error('Error fetching dashboard summary:', err);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchDashboardData();

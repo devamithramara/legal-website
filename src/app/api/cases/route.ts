@@ -4,7 +4,21 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Role, CaseStatus } from '@prisma/client';
 
-// Get Cases (role-filtered with optimized query speed)
+// ─── Shared lean select (no nested heavy relations) ────────────────────────
+const CASE_LIST_SELECT = {
+  id: true,
+  caseNumber: true,
+  title: true,
+  type: true,
+  status: true,
+  nextHearing: true,
+  court: true,
+  createdAt: true,
+  client: { select: { id: true, name: true, email: true, phone: true } },
+  junior: { select: { id: true, name: true } },
+} as const;
+
+// GET /api/cases — lightweight list without nested events/documents/tasks
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -17,59 +31,29 @@ export async function GET() {
 
     if (role === Role.ADMIN) {
       cases = await prisma.case.findMany({
-        select: {
-          id: true,
-          caseNumber: true,
-          title: true,
-          type: true,
-          status: true,
-          nextHearing: true,
-          court: true,
-          createdAt: true,
-          client: { select: { id: true, name: true, email: true, phone: true } },
-          junior: { select: { id: true, name: true } },
-          events: { select: { id: true, eventDate: true, title: true, notes: true }, orderBy: { eventDate: 'desc' }, take: 5 },
-          documents: { select: { id: true, name: true, url: true, type: true } },
-          tasks: { select: { id: true, title: true, status: true } },
-        },
+        select: CASE_LIST_SELECT,
         orderBy: { createdAt: 'desc' },
+        take: 200, // hard cap — paginate if needed later
       });
     } else if (role === Role.JUNIOR || role === Role.INTERN) {
       cases = await prisma.case.findMany({
         where: { assignedTo: id },
-        select: {
-          id: true,
-          caseNumber: true,
-          title: true,
-          type: true,
-          status: true,
-          nextHearing: true,
-          court: true,
-          createdAt: true,
-          client: { select: { id: true, name: true, email: true, phone: true } },
-          events: { select: { id: true, eventDate: true, title: true, notes: true }, orderBy: { eventDate: 'desc' }, take: 5 },
-          documents: { select: { id: true, name: true, url: true, type: true } },
-          tasks: { where: { assignedTo: id }, select: { id: true, title: true, status: true } },
-        },
+        select: CASE_LIST_SELECT,
+        orderBy: { createdAt: 'desc' },
+      });
+    } else if (role === Role.SENIOR) {
+      cases = await prisma.case.findMany({
+        where: { seniorId: id },
+        select: CASE_LIST_SELECT,
         orderBy: { createdAt: 'desc' },
       });
     } else {
-      // Client role
+      // CLIENT role
       cases = await prisma.case.findMany({
         where: { clientId: id },
         select: {
-          id: true,
-          caseNumber: true,
-          title: true,
-          type: true,
-          status: true,
-          nextHearing: true,
-          court: true,
-          createdAt: true,
-          junior: { select: { name: true, email: true } },
-          events: { select: { id: true, eventDate: true, title: true, notes: true }, orderBy: { eventDate: 'desc' }, take: 5 },
-          documents: { select: { id: true, name: true, url: true, type: true } },
-          tasks: { select: { id: true, title: true, status: true } },
+          ...CASE_LIST_SELECT,
+          junior: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -77,7 +61,7 @@ export async function GET() {
 
     return NextResponse.json(cases, {
       headers: {
-        'Cache-Control': 'private, max-age=2, stale-while-revalidate=5',
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
       },
     });
   } catch (error: any) {
@@ -86,7 +70,7 @@ export async function GET() {
   }
 }
 
-// Create Case (Admin only)
+// POST /api/cases — Admin only
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -101,10 +85,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    // Check unique case number
-    const existing = await prisma.case.findUnique({
-      where: { caseNumber },
-    });
+    const existing = await prisma.case.findUnique({ where: { caseNumber } });
     if (existing) {
       return NextResponse.json({ error: 'A case with this number already exists.' }, { status: 400 });
     }
