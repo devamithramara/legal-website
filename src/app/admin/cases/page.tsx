@@ -57,7 +57,8 @@ export default function AdminCases() {
 
   // Selected Case for Modal
   const [selectedCase, setSelectedCase] = useState<CaseItem | null>(null);
-  
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
   // Modal Sub-Forms state
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -81,6 +82,24 @@ export default function AdminCases() {
       console.error('Error loading cases pipeline:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch full case detail (events + docs + tasks) from /api/cases/[id]
+  const openCaseDetail = async (caseId: string) => {
+    setLoadingDetail(true);
+    setSelectedCase(null);
+    try {
+      const res = await fetch(`/api/cases/${caseId}`);
+      if (res.ok) {
+        setSelectedCase(await res.json());
+      } else {
+        toast('Failed to load case details.', 'error');
+      }
+    } catch {
+      toast('Network error loading case details.', 'error');
+    } finally {
+      setLoadingDetail(false);
     }
   };
 
@@ -139,13 +158,8 @@ export default function AdminCases() {
 
       if (res.ok) {
         toast('Counsel assignment updated successfully.', 'success');
-        // Refresh details
-        const refreshedCasesRes = await fetch('/api/cases');
-        const refreshedCases = await refreshedCasesRes.json();
-        setCases(refreshedCases);
-        
-        const updated = refreshedCases.find((c: any) => c.id === selectedCase.id);
-        if (updated) setSelectedCase(updated);
+        fetchCasesAndJuniors();
+        await openCaseDetail(selectedCase.id);
       } else {
         toast('Failed to update advocate assignment.', 'error');
       }
@@ -166,11 +180,7 @@ export default function AdminCases() {
       const res = await fetch(`/api/cases/${selectedCase.id}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: eventTitle,
-          eventDate,
-          notes: eventNotes,
-        }),
+        body: JSON.stringify({ title: eventTitle, eventDate, notes: eventNotes }),
       });
 
       if (res.ok) {
@@ -178,18 +188,12 @@ export default function AdminCases() {
         setEventTitle('');
         setEventDate('');
         setEventNotes('');
-        
-        // Refresh
-        const refreshedCasesRes = await fetch('/api/cases');
-        const refreshedCases = await refreshedCasesRes.json();
-        setCases(refreshedCases);
-        
-        const updated = refreshedCases.find((c: any) => c.id === selectedCase.id);
-        if (updated) setSelectedCase(updated);
+        await openCaseDetail(selectedCase.id);
+        fetchCasesAndJuniors();
       } else {
         toast('Failed to log event.', 'error');
       }
-    } catch (err) {
+    } catch {
       toast('Error contact history servers.', 'error');
     } finally {
       setLoggingEvent(false);
@@ -202,7 +206,6 @@ export default function AdminCases() {
       toast('Please write task description.', 'error');
       return;
     }
-
     if (!selectedCase.assignedTo) {
       toast('Please assign a Junior Advocate to the case before allocating tasks.', 'error');
       return;
@@ -225,18 +228,12 @@ export default function AdminCases() {
         toast('Task allocated successfully to junior advocate!', 'success');
         setTaskTitle('');
         setTaskDeadline('');
-        
-        // Refresh
-        const refreshedCasesRes = await fetch('/api/cases');
-        const refreshedCases = await refreshedCasesRes.json();
-        setCases(refreshedCases);
-        
-        const updated = refreshedCases.find((c: any) => c.id === selectedCase.id);
-        if (updated) setSelectedCase(updated);
+        await openCaseDetail(selectedCase.id);
+        fetchCasesAndJuniors();
       } else {
         toast('Failed to allocate task.', 'error');
       }
-    } catch (err) {
+    } catch {
       toast('Error contact task allocation server.', 'error');
     } finally {
       setAllocatingTask(false);
@@ -291,7 +288,7 @@ export default function AdminCases() {
                       key={c.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, c.id)}
-                      onClick={() => setSelectedCase(c)}
+                      onClick={() => openCaseDetail(c.id)}
                       className="bg-white border border-[#DCD6C5]/50 hover:border-[#C9A84C] p-3.5 rounded shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition duration-200 text-xs space-y-3"
                     >
                       <div className="space-y-0.5">
@@ -333,17 +330,12 @@ export default function AdminCases() {
 
       {/* CASE DETAILS MODAL OVERLAY */}
       {selectedCase && (
-        <Dialog open={!!selectedCase} onOpenChange={(open) => !open && setSelectedCase(null)}>
-          <DialogContent className="bg-white max-w-3xl max-h-[85vh] overflow-y-auto text-xs">
-            <DialogHeader className="border-b border-[#DCD6C5]/30 pb-4">
-              <div className="flex justify-between items-start pr-6">
-                <div>
-                  <span className="text-[9px] text-gray-500 font-bold uppercase">CNR: {selectedCase.caseNumber}</span>
-                  <DialogTitle className="font-heading text-lg font-bold text-[#0A1628] leading-snug">{selectedCase.title}</DialogTitle>
-                  <p className="text-[10px] text-gray-500 font-medium">Client: {selectedCase.client.name} ({selectedCase.client.email})</p>
-                </div>
-                {getStatusBadge(selectedCase.status)}
-              </div>
+        <Dialog open={!!selectedCase || loadingDetail} onOpenChange={(open) => { if (!open) { setSelectedCase(null); setLoadingDetail(false); } }}>
+          <DialogContent className="bg-white max-w-5xl max-h-[90vh] overflow-y-auto border border-[#DCD6C5] p-0">
+            <DialogHeader className="p-5 pb-0">
+              <DialogTitle className="font-heading text-[#0A1628] text-lg">
+                {loadingDetail ? 'Loading Case...' : (selectedCase ? `${selectedCase.caseNumber} — ${selectedCase.title}` : '')}
+              </DialogTitle>
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 items-start">
