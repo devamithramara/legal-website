@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,40 +25,51 @@ export default function LoginPage() {
     }
   }, [status, session]);
 
-  const handleRoleRedirect = (role: string) => {
+  const handleRoleRedirect = (role?: string) => {
     if (role === 'ADMIN') {
-      router.push('/admin');
+      window.location.href = '/admin';
     } else if (role === 'JUNIOR' || role === 'INTERN') {
-      router.push('/junior');
+      window.location.href = '/junior';
+    } else if (role === 'SENIOR') {
+      window.location.href = '/senior/dashboard';
+    } else if (role === 'CLIENT') {
+      window.location.href = '/dashboard';
     } else {
-      router.push('/dashboard');
+      window.location.href = '/admin';
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast('Please enter email and password.', 'error');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      toast('Please enter both email and password.', 'error');
       return;
     }
 
     setLoading(true);
     try {
       const res = await signIn('credentials', {
-        email,
+        email: cleanEmail,
         password,
         redirect: false,
       });
 
       if (res?.error) {
-        toast(res.error, 'error');
+        toast(
+          res.error === 'CredentialsSignin'
+            ? 'Incorrect email or password. Please check your credentials.'
+            : res.error,
+          'error'
+        );
+        setLoading(false);
       } else {
-        toast('Logged in successfully!', 'success');
-        // Let useEffect handle the redirect when session updates
+        toast('Logged in successfully! Redirecting...', 'success');
+        const session = await getSession();
+        handleRoleRedirect(session?.user?.role);
       }
-    } catch (err) {
-      toast('An unexpected error occurred.', 'error');
-    } finally {
+    } catch (err: any) {
+      toast(err?.message || 'An unexpected error occurred during login.', 'error');
       setLoading(false);
     }
   };
@@ -69,19 +80,26 @@ export default function LoginPage() {
     setPassword(rolePass);
     try {
       const res = await signIn('credentials', {
-        email: roleEmail,
+        email: roleEmail.toLowerCase(),
         password: rolePass,
         redirect: false,
       });
 
       if (res?.error) {
-        toast(res.error, 'error');
+        toast(
+          res.error === 'CredentialsSignin'
+            ? 'Incorrect credentials for ' + label
+            : res.error,
+          'error'
+        );
+        setLoading(false);
       } else {
-        toast(`Logged in as ${label}!`, 'success');
+        toast(`Logged in as ${label}! Redirecting...`, 'success');
+        const session = await getSession();
+        handleRoleRedirect(session?.user?.role);
       }
-    } catch (err) {
-      toast('An unexpected error occurred.', 'error');
-    } finally {
+    } catch (err: any) {
+      toast(err?.message || 'An unexpected error occurred.', 'error');
       setLoading(false);
     }
   };
