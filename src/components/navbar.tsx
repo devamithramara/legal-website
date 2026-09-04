@@ -96,7 +96,10 @@ export function Navbar() {
                 </Link>
                 <Button
                   variant="outline"
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={async () => {
+                    await signOut({ redirect: false });
+                    window.location.href = '/login';
+                  }}
                   className="border-slate-700 text-slate-300 hover:text-rose-400 hover:border-rose-500/50 bg-slate-900/50 text-xs px-3 py-2 rounded-lg transition"
                 >
                   Logout
@@ -159,9 +162,10 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     setMobileMenuOpen(false);
-                    signOut({ callbackUrl: '/' });
+                    await signOut({ redirect: false });
+                    window.location.href = '/login';
                   }}
                   className="bg-slate-900 border border-slate-800 text-slate-300 font-semibold py-2.5 rounded-xl"
                 >

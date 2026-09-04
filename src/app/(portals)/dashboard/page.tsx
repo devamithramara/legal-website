@@ -79,7 +79,10 @@ export default function ClientDashboard() {
             <p className="text-xs text-gray-400">Welcome, {session?.user?.name} | Client ID: {session?.user?.id?.split('-')[0].toUpperCase()}</p>
           </div>
           <Button
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = '/login';
+            }}
             variant="outline"
             className="border-white/10 hover:border-rose-500 hover:text-rose-500 text-white font-semibold text-xs py-1.5 px-3 flex items-center gap-1.5"
           >

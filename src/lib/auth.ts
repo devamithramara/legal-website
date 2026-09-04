@@ -83,6 +83,15 @@ export const authOptions: AuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return url;
+      try {
+        if (new URL(url).origin === baseUrl) return url;
+      } catch {
+        // fallback
+      }
+      return '/login';
+    },
   },
   pages: {
     signIn: '/login',

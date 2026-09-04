@@ -107,7 +107,10 @@ export default function SeniorLayout({ children }: { children: React.ReactNode }
           </div>
 
           <button
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = '/login';
+            }}
             className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/40 transition"
             title="Sign Out"
           >

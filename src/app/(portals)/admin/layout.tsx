@@ -53,7 +53,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span>Firm Admin Portal</span>
           </div>
           <button 
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = '/login';
+            }}
             className="text-gray-400 hover:text-rose-500 transition focus:outline-none"
             title="Log Out"
           >
