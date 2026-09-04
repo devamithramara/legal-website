@@ -1,3 +1,12 @@
+# MLR Associates — Part 2: Database Schema, Seed & Shared Libraries
+
+This document contains the complete database schema with all 28 models, the database seeder script with test cases and users, and shared backend helper libraries (`prisma.ts`, `auth.ts`, `utils.ts`).
+
+---
+
+### File: `prisma/schema.prisma`
+
+```prisma
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -6,9 +15,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -630,3 +638,388 @@ model ReminderSetting {
   customMessage     String?
   updatedAt         DateTime @updatedAt
 }
+```
+
+---
+
+### File: `prisma/seed.ts`
+
+```typescript
+import { PrismaClient, Role, AppointmentStatus, CaseStatus, TaskStatus, InvoiceStatus } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('Seeding database...');
+
+  // Clear existing data in correct dependency order
+  await prisma.transaction.deleteMany({});
+  await prisma.expense.deleteMany({});
+  await prisma.testimonial.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.caseEvent.deleteMany({});
+  await prisma.document.deleteMany({});
+  await prisma.invoice.deleteMany({});
+  await prisma.case.deleteMany({});
+  await prisma.appointment.deleteMany({});
+  await prisma.user.deleteMany({});
+
+  // Hash passwords
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  const juniorPassword = await bcrypt.hash('junior123', 10);
+  const clientPassword = await bcrypt.hash('client123', 10);
+
+  // Create Users
+  const admin = await prisma.user.create({
+    data: {
+      name: 'Senior Advocate (Admin)',
+      email: 'admin@firm.com',
+      phone: '+919876543210',
+      role: Role.ADMIN,
+      password: adminPassword,
+    },
+  });
+
+  const junior = await prisma.user.create({
+    data: {
+      name: 'Junior Advocate Rahul',
+      email: 'junior@firm.com',
+      phone: '+918765432109',
+      role: Role.JUNIOR,
+      password: juniorPassword,
+    },
+  });
+
+  const client = await prisma.user.create({
+    data: {
+      name: 'Amit Sharma (Client)',
+      email: 'client@firm.com',
+      phone: '+917654321098',
+      role: Role.CLIENT,
+      password: clientPassword,
+    },
+  });
+
+  console.log('Users created successfully.');
+
+  // Create Appointment
+  const appointmentDate = new Date();
+  appointmentDate.setDate(appointmentDate.getDate() + 2); // 2 days later
+
+  const appointment = await prisma.appointment.create({
+    data: {
+      clientId: client.id,
+      date: appointmentDate,
+      timeSlot: '11:00 AM',
+      caseType: 'Criminal',
+      status: AppointmentStatus.CONFIRMED,
+      paymentId: 'pay_MOCK1234567',
+      feePaid: 1500.0,
+      notes: 'Consultation regarding a civil property dispute and title verification.',
+    },
+  });
+
+  // Create Case
+  const hearingDate = new Date();
+  hearingDate.setDate(hearingDate.getDate() + 10); // 10 days later
+
+  const courtCase = await prisma.case.create({
+    data: {
+      clientId: client.id,
+      assignedTo: junior.id,
+      caseNumber: 'SC/2026/8942',
+      title: 'Sharma vs. State of Maharashtra',
+      type: 'Criminal',
+      status: CaseStatus.ACTIVE,
+      nextHearing: hearingDate,
+      court: 'High Court of Bombay, Room 14',
+    },
+  });
+
+  // Create CaseEvent (timeline entry)
+  await prisma.caseEvent.create({
+    data: {
+      caseId: courtCase.id,
+      eventDate: new Date(),
+      title: 'Bail Application Filed',
+      notes: 'Bail application filed in District Court. Arguments set for next week.',
+    },
+  });
+
+  // Create Document
+  await prisma.document.create({
+    data: {
+      uploadedById: client.id,
+      caseId: courtCase.id,
+      name: 'aadhaar_card_proof.pdf',
+      url: 'https://res.cloudinary.com/demo/image/upload/v1570979139/sample.jpg',
+      type: 'ID Proof',
+    },
+  });
+
+  // Create Invoice
+  const invoice = await prisma.invoice.create({
+    data: {
+      clientId: client.id,
+      amount: 15000.0,
+      gstNumber: '27AADCB2230F1ZS',
+      status: InvoiceStatus.PAID,
+      pdfUrl: '/invoices/invoice-001.pdf',
+    },
+  });
+
+  // Create Expense
+  const expense = await prisma.expense.create({
+    data: {
+      title: 'Office Broadband Internet',
+      amount: 1250.0,
+      category: 'Office Supplies',
+      date: new Date(),
+      description: 'Monthly fiber internet connection fee.',
+    },
+  });
+
+  // Create Transactions (Financial Ledger)
+  await prisma.transaction.create({
+    data: {
+      type: 'INFLOW',
+      amount: 1500.0,
+      category: 'Consultation',
+      referenceId: appointment.id,
+      description: `Consultation fee for appointment with ${client.name}`,
+    },
+  });
+
+  await prisma.transaction.create({
+    data: {
+      type: 'INFLOW',
+      amount: 15000.0,
+      category: 'Legal Fees',
+      referenceId: invoice.id,
+      description: `Legal service retainer for case ${courtCase.caseNumber}`,
+    },
+  });
+
+  await prisma.transaction.create({
+    data: {
+      type: 'OUTFLOW',
+      amount: 1250.0,
+      category: 'Utilities',
+      referenceId: expense.id,
+      description: 'Internet subscription payment',
+    },
+  });
+
+  // Create Junior Task
+  const taskDeadline = new Date();
+  taskDeadline.setDate(taskDeadline.getDate() + 4);
+
+  await prisma.task.create({
+    data: {
+      caseId: courtCase.id,
+      assignedTo: junior.id,
+      title: 'Prepare brief for High Court bail argument',
+      status: TaskStatus.IN_PROGRESS,
+      deadline: taskDeadline,
+      billableHours: 5.5,
+    },
+  });
+
+  // Create Testimonial
+  await prisma.testimonial.create({
+    data: {
+      clientId: client.id,
+      rating: 5,
+      body: 'Professional service, clear consultation, and fast responses on document checks. Highly recommended for property and contract verification!',
+      caseType: 'Property',
+      verified: true,
+    },
+  });
+
+  console.log('Database seeded successfully!');
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+```
+
+---
+
+### File: `src/lib/prisma.ts`
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+const globalForPrisma = global as unknown as { prisma: any };
+
+function createPrismaClient() {
+  const basePrisma = new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
+
+  return basePrisma.$extends({
+    query: {
+      async $allOperations({ operation, model, args, query }) {
+        try {
+          return await query(args);
+        } catch (error: any) {
+          const errorMsg = error?.message || '';
+          const isConnectionClosed =
+            errorMsg.includes('kind: Closed') ||
+            errorMsg.includes('Closed') ||
+            error?.code === 'P1001' ||
+            error?.code === 'P1017' ||
+            errorMsg.includes('Connection terminated');
+
+          if (isConnectionClosed) {
+            console.warn(`[Prisma] Connection closed by pooler. Reconnecting and retrying operation: ${model}.${operation}...`);
+            try {
+              await basePrisma.$disconnect();
+              await basePrisma.$connect();
+              return await query(args);
+            } catch (retryError) {
+              throw retryError;
+            }
+          }
+          throw error;
+        }
+      },
+    },
+  });
+}
+
+export const prisma = (globalForPrisma.prisma || createPrismaClient()) as ReturnType<typeof createPrismaClient>;
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+```
+
+---
+
+### File: `src/lib/auth.ts`
+
+```typescript
+import { AuthOptions, DefaultSession } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { prisma } from '@/lib/prisma';
+import * as bcrypt from 'bcryptjs';
+import { Role } from '@prisma/client';
+
+// Extend the built-in session and JWT types
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string;
+      role: Role;
+      phone?: string | null;
+    } & DefaultSession['user'];
+  }
+
+  interface User {
+    id: string;
+    role: Role;
+    phone?: string | null;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id: string;
+    role: Role;
+    phone?: string | null;
+  }
+}
+
+export const authOptions: AuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email', placeholder: 'admin@firm.com' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error('Please enter both email and password.');
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email.toLowerCase() },
+        });
+
+        if (!user) {
+          throw new Error('No account found with this email.');
+        }
+
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+
+        if (!isPasswordValid) {
+          throw new Error('Incorrect password.');
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+        };
+      },
+    }),
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.phone = user.phone;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+        session.user.phone = token.phone;
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: '/login',
+    error: '/login',
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+};
+```
+
+---
+
+### File: `src/lib/utils.ts`
+
+```typescript
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+---
+
