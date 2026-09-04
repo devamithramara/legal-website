@@ -84,13 +84,18 @@ export const authOptions: AuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith('/')) return url;
-      try {
-        if (new URL(url).origin === baseUrl) return url;
-      } catch {
-        // fallback
+      const base = (baseUrl || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/+$/, '');
+      if (url.startsWith('/')) {
+        return `${base}${url}`;
       }
-      return '/login';
+      try {
+        if (new URL(url).origin === new URL(base).origin) {
+          return url;
+        }
+      } catch {
+        // ignore error and fallback to base
+      }
+      return base;
     },
   },
   pages: {
